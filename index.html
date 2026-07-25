@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meu Delivery — Cardápio e pedidos online</title>
+    <meta name="description" content="Faça seu pedido pelo cardápio digital, escolha entrega ou retirada e acompanhe o preparo." />
+    <meta name="author" content="Meu Delivery" />
+    <meta name="theme-color" content="#3b82f6">
+
+    <meta property="og:title" content="Meu Delivery — Cardápio e pedidos online" />
+    <meta property="og:description" content="Escolha seus produtos, personalize o pedido e receba em casa." />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    
+    <!-- Preload theme script to eliminate flash of default colors and names -->
+    <script>
+      // Function to convert hex to HSL (same as in themeUtils.ts)
+      function hexToHsl(hex) {
+        // Remove # if present
+        hex = hex.replace('#', '');
+        
+        // Parse r, g, b values
+        const r = parseInt(hex.substring(0, 2), 16) / 255;
+        const g = parseInt(hex.substring(2, 4), 16) / 255;
+        const b = parseInt(hex.substring(4, 6), 16) / 255;
+        
+        // Find min and max values
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        
+        let h = 0, s = 0, l = (max + min) / 2;
+        
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          
+          switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+          }
+          
+          h = h * 60;
+        }
+        
+        return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+      }
+      
+      // Apply theme immediately from localStorage if available
+      function applyStoredTheme() {
+        try {
+          const storedConfig = localStorage.getItem('estabelecimentoConfig');
+          if (storedConfig) {
+            const config = JSON.parse(storedConfig);
+            
+            // Apply platform name to title and meta tags
+            if (config.nome_plataforma) {
+              document.title = config.nome_plataforma;
+              
+              // Update Open Graph title
+              const ogTitleMeta = document.querySelector('meta[property="og:title"]');
+              if (ogTitleMeta) {
+                ogTitleMeta.setAttribute('content', config.nome_plataforma);
+              }
+            }
+            
+            // Apply all color variables
+            const root = document.documentElement;
+            if (config.cor_navbar) {
+              const hslNavbar = hexToHsl(config.cor_navbar);
+              root.style.setProperty('--navbar-bg', hslNavbar);
+              // Also update the primary color to match navbar if buttons color is not set
+              if (!config.cor_botoes) {
+                root.style.setProperty('--primary', hslNavbar);
+              }
+            }
+            if (config.cor_footer) {
+              const hslFooter = hexToHsl(config.cor_footer);
+              root.style.setProperty('--footer-bg', hslFooter);
+              // Also update the secondary color to match footer if secondary color is not set
+              if (!config.cor_secundaria) {
+                root.style.setProperty('--secondary', hslFooter);
+              }
+            }
+            if (config.cor_section_header) {
+              root.style.setProperty('--section-header-bg', hexToHsl(config.cor_section_header));
+            }
+            if (config.cor_section_produtos) {
+              root.style.setProperty('--section-produtos-bg', hexToHsl(config.cor_section_produtos));
+            }
+            if (config.cor_section_comprar) {
+              root.style.setProperty('--section-comprar-bg', hexToHsl(config.cor_section_comprar));
+            }
+            if (config.cor_section_contato) {
+              root.style.setProperty('--section-contato-bg', hexToHsl(config.cor_section_contato));
+            }
+            if (config.cor_botoes) {
+              const hslBotoes = hexToHsl(config.cor_botoes);
+              root.style.setProperty('--button-primary-bg', hslBotoes);
+              // Also update the primary color to match buttons
+              root.style.setProperty('--primary', hslBotoes);
+            }
+            if (config.cor_icones) {
+              root.style.setProperty('--icon-color', hexToHsl(config.cor_icones));
+            }
+            
+            // Update theme color meta tag
+            const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+            if (themeColorMeta && config.cor_navbar) {
+              themeColorMeta.setAttribute('content', config.cor_navbar);
+            }
+            
+            // Update favicon if URL is provided
+            if (config.url_icone_plataforma) {
+              let favicon = document.querySelector('link[rel="icon"]');
+              if (!favicon) {
+                favicon = document.createElement('link');
+                favicon.rel = 'icon';
+                document.head.appendChild(favicon);
+              }
+              favicon.href = config.url_icone_plataforma;
+            }
+            
+            return true;
+          }
+        } catch (e) {
+          console.error('Error applying stored theme:', e);
+        }
+        return false;
+      }
+      
+      // Run immediately to prevent flash of default content
+      const themeApplied = applyStoredTheme();
+      
+      // If theme was not applied (no stored config), keep the generic title
+      if (!themeApplied) {
+        document.title = "Plataforma";
+        const ogTitleMeta = document.querySelector('meta[property="og:title"]');
+        if (ogTitleMeta) {
+          ogTitleMeta.setAttribute('content', 'Plataforma');
+        }
+        
+        // Remove favicon if no custom one is set
+        const favicon = document.querySelector('link[rel="icon"]');
+        if (favicon) {
+          favicon.remove();
+        }
+      }
+      
+      // Also run after a short delay to ensure it's applied
+      setTimeout(applyStoredTheme, 100);
+      
+      // Run one more time after a longer delay to catch any edge cases
+      setTimeout(applyStoredTheme, 500);
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

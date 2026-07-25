@@ -1,0 +1,177 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { authAPI, perfisAPI } from '@/lib/api';
+import { enderecosAPI } from '@/lib/api';
+
+export interface UserProfile {
+  id: string;
+  nome_completo: string;
+  email?: string;
+  telefone?: string;
+  tipo_usuario: 'cliente' | 'funcionario' | 'entregador' | 'gerente';
+  ativo: boolean;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export interface Endereco {
+  id: string;
+  nome_endereco: string;
+  endereco_completo: string;
+  cep?: string;
+  cidade: string;
+  estado?: string;
+  bairro?: string;
+  numero?: string;
+  complemento?: string;
+  ponto_referencia?: string;
+  principal: boolean;
+  criado_em: string;
+}
+
+export const useUserProfile = () => {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [enderecos, setEnderecos] = useState<Endereco[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingEnderecos, setLoadingEnderecos] = useState(false);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        // Buscar perfil do backend usando helper
+        const data = await authAPI.getProfile(user.id);
+        setProfile(data);
+      } catch (error) {
+        setProfile(null);
+      }
+      setLoading(false);
+    };
+
+    fetchProfile();
+    if (user) {
+      fetchEnderecos();
+    }
+  }, [user]);
+
+  const fetchEnderecos = async () => {
+    if (!user) return;
+    setLoadingEnderecos(true);
+    try {
+      const data = await enderecosAPI.getEnderecos(user.id);
+      setEnderecos(data || []);
+    } catch (error) {
+      setEnderecos([]);
+    }
+    setLoadingEnderecos(false);
+  };
+
+  const updateProfile = async (updates: Partial<Omit<UserProfile, 'id' | 'criado_em' | 'atualizado_em' | 'email'>>) => {
+    if (!user || !profile) return false;
+
+    try {
+      const response = await perfisAPI.update(user.id, {
+        ...updates,
+        atualizado_em: new Date().toISOString()
+      });
+
+      if (response.error) {
+        console.error('Erro ao atualizar perfil:', response.error);
+        return false;
+      }
+
+      setProfile(prev => prev ? { ...prev, ...updates, atualizado_em: new Date().toISOString() } : prev);
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      return false;
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    if (!user) return false;
+    
+    try {
+      const response = await perfisAPI.updatePassword(user.id, newPassword);
+
+      if (response.error) {
+        console.error('Erro ao atualizar senha:', response.error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar senha:', error);
+      return false;
+    }
+  };
+
+  const addEndereco = async (endereco: Omit<Endereco, 'id' | 'criado_em'>) => {
+    if (!user) return false;
+    try {
+      const isPrimeiro = enderecos.length === 0;
+      const novoPrincipal = isPrimeiro || endereco.principal;
+      const payload = {
+        ...endereco,
+        usuario_id: user.id,
+        principal: novoPrincipal,
+      };
+      await enderecosAPI.addEndereco(payload);
+      await fetchEnderecos();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const updateEndereco = async (id: string, updates: Partial<Omit<Endereco, 'id' | 'criado_em'>>) => {
+    if (!user) return false;
+    try {
+      await enderecosAPI.updateEndereco(id, updates);
+      await fetchEnderecos();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const deleteEndereco = async (id: string) => {
+    if (!user) return false;
+    try {
+      await enderecosAPI.deleteEndereco(id);
+      await fetchEnderecos();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const setEnderecoPrincipal = async (id: string) => {
+    if (!user) return false;
+    try {
+      await enderecosAPI.updateEndereco(id, { principal: true });
+      await fetchEnderecos();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  return { 
+    profile, 
+    enderecos, 
+    loading, 
+    loadingEnderecos,
+    updateProfile, 
+    updatePassword,
+    addEndereco,
+    updateEndereco,
+    deleteEndereco,
+    setEnderecoPrincipal,
+    fetchEnderecos
+  };
+};
