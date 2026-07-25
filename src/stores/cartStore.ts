@@ -58,7 +58,7 @@ export const useCartStore = create<CartStore>()(
             newTotalPrice = pricePerUnit * newQuantity;
           } else {
             // Recalculate from base price and customizations
-            let pricePerUnit = existingItem.price;
+            let pricePerUnit = Number(existingItem.price) || 0;
             
             // Add extra options prices if they exist
             if (existingItem.customizations?.extraOptions) {
@@ -70,7 +70,8 @@ export const useCartStore = create<CartStore>()(
             }
             if (existingItem.customizations?.selections) {
               pricePerUnit += existingItem.customizations.selections.reduce(
-                (sum, option) => sum + option.preco_adicional * option.quantidade,
+                (sum, option) => sum
+                  + (Number(option.preco_adicional) || 0) * option.quantidade,
                 0
               );
             }
@@ -78,7 +79,7 @@ export const useCartStore = create<CartStore>()(
             // Add variations prices if they exist
             if (existingItem.customizations?.variations) {
               const variationsTotal = Object.values(existingItem.customizations.variations).reduce(
-                (sum, variation) => sum + (variation.preco_adicional || 0), 
+                (sum, variation) => sum + (Number(variation.preco_adicional) || 0),
                 0
               );
               pricePerUnit += variationsTotal;
@@ -118,7 +119,7 @@ export const useCartStore = create<CartStore>()(
           items: get().items.map(item => {
             if (item.id === itemId) {
               // Calculate the price per unit (including customizations)
-              let pricePerUnit = item.price;
+              let pricePerUnit = Number(item.price) || 0;
               
               // Add extra options prices if they exist
               if (item.customizations?.extraOptions) {
@@ -130,7 +131,8 @@ export const useCartStore = create<CartStore>()(
               }
               if (item.customizations?.selections) {
                 pricePerUnit += item.customizations.selections.reduce(
-                  (sum, option) => sum + option.preco_adicional * option.quantidade,
+                (sum, option) => sum
+                  + (Number(option.preco_adicional) || 0) * option.quantidade,
                   0
                 );
               }
@@ -138,7 +140,7 @@ export const useCartStore = create<CartStore>()(
               // Add variations prices if they exist
               if (item.customizations?.variations) {
                 const variationsTotal = Object.values(item.customizations.variations).reduce(
-                  (sum, variation) => sum + (variation.preco_adicional || 0), 
+                (sum, variation) => sum + (Number(variation.preco_adicional) || 0),
                   0
                 );
                 pricePerUnit += variationsTotal;

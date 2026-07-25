@@ -52,6 +52,7 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
   const { getVariationsByProduct, refetch: refetchVariations } = useProductVariations();
   const productVariations = getVariationsByProduct(product.id);
   const variationTypes = [...new Set(productVariations.map((item) => item.tipo_variacao))];
+  const basePrice = Number(product.price) || 0;
 
   useEffect(() => {
     if (!open || !product.id) return;
@@ -138,7 +139,7 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
     const variation = productVariations.find((item) => item.id === id);
     return sum + Number(variation?.preco_adicional || 0);
   }, 0);
-  const total = (product.price + additions + variationAdditions) * quantity;
+  const total = (basePrice + additions + variationAdditions) * quantity;
 
   const reset = () => {
     setSelected({});
@@ -195,6 +196,7 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
     );
     onAddToCart({
       ...product,
+      price: basePrice,
       quantity,
       totalPrice: total,
       customizations: { selections, variations, notes },
@@ -220,7 +222,7 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
               Total: {money(total)}
             </span>
             <small className="mt-1 block text-sm font-medium text-muted-foreground">
-              Base {money(product.price * quantity)}
+              Base {money(basePrice * quantity)}
               {additions + variationAdditions > 0
                 ? ` + ${money((additions + variationAdditions) * quantity)} em adicionais`
                 : ""}

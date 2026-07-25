@@ -54,7 +54,7 @@ const ProductDetail = () => {
   const productFormatted: ProductProps | null = product ? {
     id: product.id,
     name: product.nome,
-    price: product.preco,
+    price: Number(product.preco) || 0,
     description: product.descricao || '',
     image: product.url_imagem || "/placeholder.svg",
     images: product.imagens?.map(imagem => imagem.url).filter(Boolean)
