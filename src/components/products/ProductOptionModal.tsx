@@ -211,7 +211,20 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
       <DialogContent className="delivery-options-dialog bottom-0 top-auto max-h-[94dvh] max-w-none translate-y-0 overflow-y-auto rounded-t-3xl p-4 sm:bottom-auto sm:top-[50%] sm:max-w-2xl sm:translate-y-[-50%] sm:rounded-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle className="pr-8 text-left text-2xl font-black">
-            {product.name}<span className="delivery-theme-accent mt-1 block text-lg">A partir de {money(product.price)}</span>
+            {product.name}
+            <span
+              className="delivery-theme-accent mt-2 block text-2xl"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              Total: {money(total)}
+            </span>
+            <small className="mt-1 block text-sm font-medium text-muted-foreground">
+              Base {money(product.price * quantity)}
+              {additions + variationAdditions > 0
+                ? ` + ${money((additions + variationAdditions) * quantity)} em adicionais`
+                : ""}
+            </small>
           </DialogTitle>
         </DialogHeader>
 
@@ -242,7 +255,27 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
                   const isSelected = (selected[category.id] || []).includes(option.id);
                   const amount = optionQuantities[category.id]?.[option.id] || 0;
                   return (
-                    <div key={option.id} className={`delivery-option-row ${isSelected || amount > 0 ? "is-selected" : ""} ${!option.disponivel ? "opacity-45" : ""}`}>
+                    <div
+                      key={option.id}
+                      className={`delivery-option-row ${isSelected || amount > 0 ? "is-selected" : ""} ${!option.disponivel ? "opacity-45" : ""} ${category.tipo !== "quantidade" && option.disponivel ? "cursor-pointer" : ""}`}
+                      role={category.tipo !== "quantidade" ? "button" : undefined}
+                      tabIndex={category.tipo !== "quantidade" && option.disponivel ? 0 : undefined}
+                      onClick={() => {
+                        if (category.tipo !== "quantidade" && option.disponivel) {
+                          toggle(category, option.id);
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          category.tipo !== "quantidade"
+                          && option.disponivel
+                          && (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          toggle(category, option.id);
+                        }
+                      }}
+                    >
                       <div><strong className="block">{option.nome}</strong>{option.produtoAdicionalNome && <small className="text-gray-500">Produto adicional</small>}</div>
                       <div className="flex items-center gap-3">
                         {category.mostrarPreco && option.preco > 0 && <b className="delivery-theme-accent">+{money(option.preco)}</b>}
@@ -253,7 +286,15 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
                             <Button type="button" variant="outline" size="icon" disabled={!option.disponivel || amount >= category.maximoPorOpcao || selectedCount(category) >= category.maximo} onClick={() => changeOptionQuantity(category, option.id, 1)}>+</Button>
                           </div>
                         ) : (
-                          <input className="h-6 w-6" type={category.tipo === "unica" ? "radio" : "checkbox"} name={category.tipo === "unica" ? category.id : undefined} disabled={!option.disponivel} checked={isSelected} onChange={() => toggle(category, option.id)} />
+                          <input
+                            className="h-6 w-6"
+                            type={category.tipo === "unica" ? "radio" : "checkbox"}
+                            name={category.tipo === "unica" ? category.id : undefined}
+                            disabled={!option.disponivel}
+                            checked={isSelected}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={() => toggle(category, option.id)}
+                          />
                         )}
                       </div>
                     </div>
@@ -268,7 +309,9 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
         </div>
 
         <DialogFooter className="delivery-options-footer sticky -bottom-4 -mx-4 border-t p-4 shadow-[0_-10px_28px_rgba(0,0,0,.1)] sm:-bottom-6 sm:-mx-6 sm:p-6">
-          <Button onClick={addToCart} className="btn-primary h-14 w-full text-base font-black">Adicionar · {money(total)}</Button>
+          <Button onClick={addToCart} className="btn-primary h-14 w-full text-base font-black">
+            Adicionar · <span className="ml-1" aria-live="polite">{money(total)}</span>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
