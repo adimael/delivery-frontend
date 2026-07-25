@@ -112,6 +112,8 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
   const [validandoCupom, setValidandoCupom] = useState(false);
   const [pedidoCriado, setPedidoCriado] = useState<any>(null);
   const [areaIndisponivel, setAreaIndisponivel] = useState('');
+  const [precisaTroco, setPrecisaTroco] = useState(false);
+  const [trocoParaCentavos, setTrocoParaCentavos] = useState(0);
   
   // Use the platform name from configuration or default to "Plataforma"
   const platformName = configuracao?.nome_plataforma || "Plataforma";
@@ -168,6 +170,17 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         variant: "destructive",
       });
     }
+  };
+
+  const formatarValorEmReais = (centavos: number) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(centavos / 100);
+
+  const alterarValorTroco = (valor: string) => {
+    const centavos = Number(valor.replace(/\D/g, '')) || 0;
+    setTrocoParaCentavos(centavos);
   };
 
   // Função para converter qualquer valor para número
@@ -416,6 +429,8 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
     setCupomAplicado(null);
     setPedidoCriado(null);
     setAreaIndisponivel('');
+    setPrecisaTroco(false);
+    setTrocoParaCentavos(0);
     setOrderData({
       nomeDestinatario: user?.nome_completo || '',
       telefone: user?.telefone || '',
@@ -579,7 +594,26 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
       }
       setStep('payment');
     } else if (step === 'payment') {
+      if (orderData.formaPagamento === 'dinheiro' && precisaTroco) {
+        const trocoPara = trocoParaCentavos / 100;
+        if (trocoPara <= calculatedValues.totalAjustado) {
+          toast({
+            title: 'Informe o valor para o troco',
+            description: 'O valor pago deve ser maior que o total do pedido.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
       if (orderData.formaPagamento === 'pix') {
+        if (!configuracao?.chave_pix?.trim()) {
+          toast({
+            title: 'PIX indisponível',
+            description: 'O estabelecimento ainda não configurou uma chave PIX.',
+            variant: 'destructive',
+          });
+          return;
+        }
         if (isSubmitting) return;
         const janelaWhatsApp = reservarWhatsApp();
         setIsSubmitting(true);
@@ -703,6 +737,15 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         nomeCliente = orderData.nomeDestinatario || 'Cliente Convidado';
       }
       
+      const observacoesPedido = [
+        orderData.observacoes.trim(),
+        orderData.formaPagamento === 'dinheiro'
+          ? precisaTroco
+            ? `Troco para ${formatarValorEmReais(trocoParaCentavos)}`
+            : 'Pagamento em dinheiro: não precisa de troco'
+          : '',
+      ].filter(Boolean).join(' | ');
+
       // Create order object
       const order = {
         numero_pedido: numeroOrdem,
@@ -719,7 +762,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         valor_total: calculatedValues.totalAjustado,
         taxa_entrega: calculatedValues.taxaEntrega,
         endereco_entrega: enderecoCompleto,
-        observacoes: orderData.observacoes,
+        observacoes: observacoesPedido,
         status: 'pendente',
         itens_pedido: items.map(item => ({
           produto_id: item.id,
@@ -735,7 +778,9 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
           preco_total: item.totalPrice !== undefined && item.totalPrice !== null 
             ? item.totalPrice 
             : item.price * item.quantity,
-          observacoes: item.customizations ? JSON.stringify(item.customizations) : null
+          observacoes: typeof item.customizations?.notes === 'string'
+            ? item.customizations.notes.slice(0, 180)
+            : null
         }))
       };
       
@@ -984,6 +1029,22 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
                                     )}
                                   </div>
                                 </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="cep-endereco-alternativo">CEP *</Label>
+                                  <Input
+                                    id="cep-endereco-alternativo"
+                                    value={orderData.cep}
+                                    onChange={(e) => void preencherEnderecoPeloCep(e.target.value)}
+                                    placeholder="00000-000"
+                                    inputMode="numeric"
+                                    autoComplete="postal-code"
+                                    maxLength={9}
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Digite o CEP para preencher rua, bairro, cidade e UF.
+                                  </p>
+                                </div>
                                 
                                 <div className="space-y-2">
                                   <Label htmlFor="endereco">Endereço *</Label>
@@ -1026,7 +1087,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
                                 </div>
                                 
                                 <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-2">
+                                  <div className="space-y-2 col-span-2 sm:col-span-1">
                                     <Label htmlFor="cidade">Cidade *</Label>
                                     <Input 
                                       id="cidade" 
@@ -1036,28 +1097,18 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
                                     />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label htmlFor="cep">CEP *</Label>
-                                    <Input 
-                                      id="cep" 
-                                      value={orderData.cep} 
-                                      onChange={(e) => void preencherEnderecoPeloCep(e.target.value)}
-                                      placeholder="00000-000"
-                                      maxLength={9}
+                                    <Label htmlFor="estado">UF *</Label>
+                                    <Input
+                                      id="estado"
+                                      value={orderData.estado}
+                                      onChange={(e) => setOrderData({
+                                        ...orderData,
+                                        estado: e.target.value.replace(/[^a-z]/gi, '').slice(0, 2).toUpperCase(),
+                                      })}
+                                      placeholder="BA"
+                                      maxLength={2}
                                     />
                                   </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="estado">UF *</Label>
-                                  <Input
-                                    id="estado"
-                                    value={orderData.estado}
-                                    onChange={(e) => setOrderData({
-                                      ...orderData,
-                                      estado: e.target.value.replace(/[^a-z]/gi, '').slice(0, 2).toUpperCase(),
-                                    })}
-                                    placeholder="BA"
-                                    maxLength={2}
-                                  />
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor="ponto-referencia">Ponto de referência</Label>
@@ -1119,6 +1170,22 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
                               )}
                             </div>
                           </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="cep-endereco-visitante">CEP *</Label>
+                            <Input
+                              id="cep-endereco-visitante"
+                              value={orderData.cep}
+                              onChange={(e) => void preencherEnderecoPeloCep(e.target.value)}
+                              placeholder="00000-000"
+                              inputMode="numeric"
+                              autoComplete="postal-code"
+                              maxLength={9}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Digite o CEP para preencher rua, bairro, cidade e UF.
+                            </p>
+                          </div>
                           
                           <div className="space-y-2">
                             <Label htmlFor="endereco">Endereço *</Label>
@@ -1161,7 +1228,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                            <div className="space-y-2 col-span-2 sm:col-span-1">
                               <Label htmlFor="cidade">Cidade *</Label>
                               <Input 
                                 id="cidade" 
@@ -1171,28 +1238,18 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="cep">CEP *</Label>
-                              <Input 
-                                id="cep" 
-                                value={orderData.cep} 
-                                onChange={(e) => void preencherEnderecoPeloCep(e.target.value)}
-                                placeholder="00000-000"
-                                maxLength={9}
+                              <Label htmlFor="estado">UF *</Label>
+                              <Input
+                                id="estado"
+                                value={orderData.estado}
+                                onChange={(e) => setOrderData({
+                                  ...orderData,
+                                  estado: e.target.value.replace(/[^a-z]/gi, '').slice(0, 2).toUpperCase(),
+                                })}
+                                placeholder="BA"
+                                maxLength={2}
                               />
                             </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="estado">UF *</Label>
-                            <Input
-                              id="estado"
-                              value={orderData.estado}
-                              onChange={(e) => setOrderData({
-                                ...orderData,
-                                estado: e.target.value.replace(/[^a-z]/gi, '').slice(0, 2).toUpperCase(),
-                              })}
-                              placeholder="BA"
-                              maxLength={2}
-                            />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="ponto-referencia-visitante">Ponto de referência</Label>
@@ -1252,16 +1309,77 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
             {step === 'payment' && (
               <>
                 <div className="space-y-4">
-                  <RadioGroup value={orderData.formaPagamento} onValueChange={(value: string) => setOrderData({...orderData, formaPagamento: value})}>
-                    <div className="flex items-center space-x-2">
+                  <RadioGroup
+                    value={orderData.formaPagamento}
+                    onValueChange={(value: string) => {
+                      setOrderData({ ...orderData, formaPagamento: value });
+                      if (value !== 'dinheiro') {
+                        setPrecisaTroco(false);
+                        setTrocoParaCentavos(0);
+                      }
+                    }}
+                    className="grid gap-3"
+                  >
+                    <div className="flex min-h-14 items-center space-x-3 rounded-xl border p-4">
                       <RadioGroupItem value="pix" id="pix" />
-                      <Label htmlFor="pix">PIX</Label>
+                      <Label htmlFor="pix" className="flex-1 cursor-pointer text-base font-semibold">PIX</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex min-h-14 items-center space-x-3 rounded-xl border p-4">
                       <RadioGroupItem value="dinheiro" id="dinheiro" />
-                      <Label htmlFor="dinheiro">Dinheiro</Label>
+                      <Label htmlFor="dinheiro" className="flex-1 cursor-pointer text-base font-semibold">Dinheiro</Label>
                     </div>
                   </RadioGroup>
+
+                  {orderData.formaPagamento === 'dinheiro' && (
+                    <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+                      <div>
+                        <p className="font-semibold">Precisa de troco?</p>
+                        <p className="text-sm text-muted-foreground">
+                          Informe se o entregador deve levar troco.
+                        </p>
+                      </div>
+                      <RadioGroup
+                        value={precisaTroco ? 'sim' : 'nao'}
+                        onValueChange={(value) => {
+                          const precisa = value === 'sim';
+                          setPrecisaTroco(precisa);
+                          if (!precisa) setTrocoParaCentavos(0);
+                        }}
+                        className="grid grid-cols-2 gap-3"
+                      >
+                        <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border bg-background p-3">
+                          <RadioGroupItem value="nao" />
+                          Não
+                        </Label>
+                        <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border bg-background p-3">
+                          <RadioGroupItem value="sim" />
+                          Sim
+                        </Label>
+                      </RadioGroup>
+                      {precisaTroco && (
+                        <div className="space-y-2">
+                          <Label htmlFor="troco-para">Troco para quanto?</Label>
+                          <Input
+                            id="troco-para"
+                            type="text"
+                            inputMode="numeric"
+                            value={formatarValorEmReais(trocoParaCentavos)}
+                            onChange={(event) => alterarValorTroco(event.target.value)}
+                            className="h-12 text-lg font-semibold"
+                            aria-describedby="troco-resumo"
+                          />
+                          <p id="troco-resumo" className="text-sm text-muted-foreground">
+                            {trocoParaCentavos / 100 > calculatedValues.totalAjustado
+                              ? `Troco: ${formatarValorEmReais(
+                                trocoParaCentavos
+                                  - Math.round(calculatedValues.totalAjustado * 100),
+                              )}`
+                              : 'O valor deve ser maior que o total do pedido.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-2 rounded-xl border p-3">
                     <Label htmlFor="cupom">Cupom de desconto</Label>
