@@ -115,13 +115,11 @@ export const CheckoutModal = ({
   const [useSavedAddress, setUseSavedAddress] = useState(true);
   const [selectedEnderecoId, setSelectedEnderecoId] = useState('');
   const [salvarNovoEndereco, setSalvarNovoEndereco] = useState(true);
-  const [cupomCodigo, setCupomCodigo] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState<{
     codigo: string;
     desconto: number;
     descricao?: string;
   } | null>(null);
-  const [validandoCupom, setValidandoCupom] = useState(false);
   const [pedidoCriado, setPedidoCriado] = useState<any>(null);
   const [areaIndisponivel, setAreaIndisponivel] = useState('');
   const [precisaTroco, setPrecisaTroco] = useState(false);
@@ -448,7 +446,6 @@ export const CheckoutModal = ({
     setUseSavedAddress(true);
     setSelectedEnderecoId('');
     setSalvarNovoEndereco(true);
-    setCupomCodigo(cupomInicial?.codigo || '');
     setCupomAplicado(cupomInicial);
     setPedidoCriado(null);
     setAreaIndisponivel('');
@@ -653,50 +650,6 @@ export const CheckoutModal = ({
       } else {
         handleFinishOrder();
       }
-    }
-  };
-
-  const aplicarCupom = async () => {
-    const codigo = cupomCodigo.trim().toUpperCase();
-    if (!codigo || validandoCupom) return;
-    setValidandoCupom(true);
-    try {
-      const resultado = await apiRequest(user ? '/cupons/validar-autenticado' : '/cupons/validar', {
-        method: 'POST',
-        body: JSON.stringify({
-          codigo,
-          subtotal,
-          itens: items.map((item) => ({
-            produto_id: item.id,
-            total: item.totalPrice ?? item.price * item.quantity,
-          })),
-        }),
-      });
-      if (resultado.exige_cadastro && !user) {
-        throw new Error('Este cupom é exclusivo para clientes cadastrados. Entre na sua conta.');
-      }
-      setCupomAplicado({
-        codigo: String(resultado.codigo),
-        desconto: Number(resultado.desconto),
-        descricao: resultado.descricao,
-      });
-      setCupomCodigo(String(resultado.codigo));
-      toast({
-        title: 'Cupom aplicado',
-        description: `Desconto de ${new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-        }).format(Number(resultado.desconto))}.`,
-      });
-    } catch (error) {
-      setCupomAplicado(null);
-      toast({
-        title: 'Cupom não aplicado',
-        description: error instanceof Error ? error.message : 'Cupom inválido.',
-        variant: 'destructive',
-      });
-    } finally {
-      setValidandoCupom(false);
     }
   };
 
@@ -1386,42 +1339,6 @@ export const CheckoutModal = ({
                     </div>
                   )}
 
-                  <div className="delivery-checkout-coupon">
-                    <Label htmlFor="cupom">Cupom de desconto</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="cupom"
-                        value={cupomCodigo}
-                        onChange={(event) => {
-                          setCupomCodigo(event.target.value.toUpperCase());
-                          setCupomAplicado(null);
-                        }}
-                        placeholder="Digite o código"
-                        maxLength={40}
-                        disabled={validandoCupom}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void aplicarCupom()}
-                        disabled={!cupomCodigo.trim() || validandoCupom}
-                      >
-                        {validandoCupom ? 'Validando...' : 'Aplicar'}
-                      </Button>
-                    </div>
-                    {cupomAplicado && (
-                      <p className="text-sm font-medium text-green-700">
-                        Cupom {cupomAplicado.codigo} aplicado.
-                      </p>
-                    )}
-                  </div>
-                  {!user && (
-                    <p className="rounded-xl border p-3 text-sm text-muted-foreground">
-                      Alguns cupons são exclusivos para clientes cadastrados. Cupons liberados
-                      para visitantes podem ser aplicados normalmente.
-                    </p>
-                  )}
-                  
                   <div className="delivery-checkout-summary">
                     <div>
                       <div className="flex justify-between">

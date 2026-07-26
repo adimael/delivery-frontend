@@ -2488,12 +2488,9 @@
 .delivery-payment-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 15px; background: hsl(var(--button-primary-bg) / .12); color: hsl(var(--button-primary-bg)); }
 .delivery-payment-icon svg { width: 25px; }
 .delivery-payment-option [role="radio"] { width: 22px; height: 22px; border-width: 2px; }
-.delivery-change-card,.delivery-checkout-coupon,.delivery-checkout-summary { padding: 18px; border: 1px solid hsl(var(--border)); border-radius: 19px; background: hsl(var(--card)); }
+.delivery-change-card,.delivery-checkout-summary { padding: 18px; border: 1px solid hsl(var(--border)); border-radius: 19px; background: hsl(var(--card)); }
 .delivery-change-card { display: grid; gap: 16px; }
 .delivery-change-card [role="radiogroup"] label { min-height: 54px; border-radius: 15px; background: hsl(var(--background)); }
-.delivery-checkout-coupon { display: grid; gap: 9px; }
-.delivery-checkout-coupon > div { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; }
-.delivery-checkout-coupon button { min-height: 54px; border-radius: 15px; }
 .delivery-checkout-summary > div { display: grid; gap: 11px; }
 .delivery-checkout-summary > div > div { display: flex; justify-content: space-between; gap: 18px; color: hsl(var(--muted-foreground)); font-size: 13px; }
 .delivery-checkout-summary > div > div:last-child { margin-top: 5px; padding-top: 14px; align-items: end; border-top: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); font-size: 17px; font-weight: 950; }
