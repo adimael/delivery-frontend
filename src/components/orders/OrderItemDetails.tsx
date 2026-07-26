@@ -1,5 +1,6 @@
-type Selection = {
+export type OrderItemSelection = {
   id?: string;
+  opcao_uuid?: string;
   nome?: string;
   name?: string;
   categoria?: string;
@@ -16,8 +17,17 @@ export type DetailedOrderItem = {
   preco_total: number | string;
   variacao_nome?: string | null;
   tipo_variacao?: string | null;
-  selecoes?: Selection[] | string | null;
+  selecoes?: OrderItemSelection[] | string | null;
   observacoes?: string | null;
+  customizations?: {
+    selections?: OrderItemSelection[];
+    variations?: Record<string, {
+      id?: string;
+      nome?: string;
+      name?: string;
+    }>;
+    notes?: string;
+  } | null;
 };
 
 const money = (value: unknown) =>
@@ -35,7 +45,11 @@ const parseJson = (value: unknown): any => {
   }
 };
 
-const selectionsFromItem = (item: DetailedOrderItem): Selection[] => {
+const selectionsFromItem = (item: DetailedOrderItem): OrderItemSelection[] => {
+  if (Array.isArray(item.customizations?.selections)) {
+    return item.customizations.selections;
+  }
+
   const structured = parseJson(item.selecoes);
   if (Array.isArray(structured)) return structured;
 
@@ -45,6 +59,9 @@ const selectionsFromItem = (item: DetailedOrderItem): Selection[] => {
 };
 
 const notesFromItem = (item: DetailedOrderItem): string => {
+  if (item.customizations?.notes) {
+    return String(item.customizations.notes).trim();
+  }
   if (!item.observacoes) return '';
   const parsed = parseJson(item.observacoes);
   if (!parsed) return item.observacoes;
@@ -52,6 +69,13 @@ const notesFromItem = (item: DetailedOrderItem): string => {
 };
 
 const variationFromItem = (item: DetailedOrderItem): string[] => {
+  const currentVariations = item.customizations?.variations;
+  if (currentVariations && typeof currentVariations === 'object') {
+    return Object.entries(currentVariations).map(([type, value]) =>
+      `${type}: ${value?.nome || value?.name || 'Selecionada'}`,
+    );
+  }
+
   if (item.variacao_nome) {
     return [`${item.tipo_variacao || 'Variação'}: ${item.variacao_nome}`];
   }
@@ -64,7 +88,7 @@ const variationFromItem = (item: DetailedOrderItem): string[] => {
 };
 
 export const OrderItemDetails = ({ item }: { item: DetailedOrderItem }) => {
-  const groups = selectionsFromItem(item).reduce<Record<string, Selection[]>>(
+  const groups = selectionsFromItem(item).reduce<Record<string, OrderItemSelection[]>>(
     (result, selection) => {
       const category = selection.categoria || 'Opções selecionadas';
       result[category] = [...(result[category] || []), selection];
@@ -106,7 +130,7 @@ export const OrderItemDetails = ({ item }: { item: DetailedOrderItem }) => {
           <ul className="mt-1 space-y-1">
             {selections.map((selection, index) => (
               <li
-                key={selection.id || `${category}-${index}`}
+                key={selection.opcao_uuid || selection.id || `${category}-${index}`}
                 className="flex justify-between gap-3"
               >
                 <span>

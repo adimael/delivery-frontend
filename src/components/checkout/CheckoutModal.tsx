@@ -754,6 +754,38 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
           : '',
       ].filter(Boolean).join(' | ');
 
+      const itensPedido = items.map((item) => {
+        const opcoes = (item.customizations?.selections || []).map((option) => {
+          const opcaoUuid = String(option.opcao_uuid || option.id || '').trim();
+          if (!opcaoUuid) {
+            throw new Error(
+              `Uma opção selecionada em "${item.name}" não pôde ser identificada. Remova o item do carrinho e selecione-o novamente.`,
+            );
+          }
+
+          return {
+            opcao_uuid: opcaoUuid,
+            quantidade: Math.max(1, Number(option.quantidade || 1)),
+          };
+        });
+
+        return {
+          produto_id: item.id,
+          quantidade: Math.max(1, Number(item.quantity || 1)),
+          opcoes,
+          variacao_uuid: item.customizations?.variations
+            ? Object.values(item.customizations.variations)[0]?.id || null
+            : null,
+          preco_unitario: item.price,
+          preco_total: item.totalPrice !== undefined && item.totalPrice !== null
+            ? item.totalPrice
+            : item.price * item.quantity,
+          observacoes: typeof item.customizations?.notes === 'string'
+            ? item.customizations.notes.slice(0, 180)
+            : null,
+        };
+      });
+
       // Create order object
       const order = {
         numero_pedido: numeroOrdem,
@@ -772,24 +804,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         endereco_entrega: enderecoCompleto,
         observacoes: observacoesPedido,
         status: 'pendente',
-        itens_pedido: items.map(item => ({
-          produto_id: item.id,
-          quantidade: item.quantity,
-          opcoes: item.customizations?.selections?.map(option => ({
-            opcao_uuid: option.opcao_uuid,
-            quantidade: option.quantidade
-          })) || [],
-          variacao_uuid: item.customizations?.variations
-            ? Object.values(item.customizations.variations)[0]?.id || null
-            : null,
-          preco_unitario: item.price,
-          preco_total: item.totalPrice !== undefined && item.totalPrice !== null 
-            ? item.totalPrice 
-            : item.price * item.quantity,
-          observacoes: typeof item.customizations?.notes === 'string'
-            ? item.customizations.notes.slice(0, 180)
-            : null
-        }))
+        itens_pedido: itensPedido,
       };
       
       

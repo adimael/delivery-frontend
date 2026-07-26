@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MessageCircle, Printer, QrCode } from "lucide-react";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
+import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 import type { MouseEvent } from "react";
 
 interface ItemOption {
@@ -158,7 +159,22 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
           {/* Itens do pedido */}
           <div>
             <h3 className="font-semibold mb-3">Itens do Pedido</h3>
-            <div className="border rounded-lg overflow-hidden">
+            <div className="grid gap-3">
+              {(invoiceData.items || []).map((item: InvoiceItem, index: number) => (
+                <OrderItemDetails
+                  key={`${item.name}-${index}`}
+                  item={{
+                    id: String(index),
+                    produto_nome: item.name,
+                    quantidade: item.quantity,
+                    preco_unitario: item.price,
+                    preco_total: item.totalPrice ?? item.price * item.quantity,
+                    customizations: item.customizations,
+                  }}
+                />
+              ))}
+            </div>
+            <div className="hidden" aria-hidden="true">
               <div className="grid grid-cols-12 gap-2 bg-gray-50 p-3 text-sm font-medium print:bg-gray-100">
                 <div className="col-span-6">Item</div>
                 <div className="col-span-2 text-center">Qtd</div>
