@@ -2495,6 +2495,9 @@
 .delivery-checkout-summary > div > div { display: flex; justify-content: space-between; gap: 18px; color: hsl(var(--muted-foreground)); font-size: 13px; }
 .delivery-checkout-summary > div > div:last-child { margin-top: 5px; padding-top: 14px; align-items: end; border-top: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); font-size: 17px; font-weight: 950; }
 .delivery-checkout-summary > div > div:last-child span:last-child { color: hsl(var(--button-primary-bg)) !important; font-size: 25px; }
+.delivery-pickup-contact { padding: 18px; display: grid; gap: 17px; border: 1px solid hsl(var(--border)); border-radius: 20px; background: hsl(var(--card)); }
+.delivery-pickup-contact > div:first-child span { font-size: 17px; font-weight: 950; }
+.delivery-pickup-contact > div:first-child p { margin-top: 4px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
 
 @media(max-width:640px) {
   .delivery-checkout-modal { width: 100vw; max-width: none; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; }

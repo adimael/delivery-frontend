@@ -561,6 +561,18 @@ export const CheckoutModal = ({
     }
 
     if (step === 'address') {
+      const telefoneNumerico = orderData.telefone.replace(/\D/g, '');
+      if (
+        !orderData.nomeDestinatario.trim()
+        || !/^\d{10,13}$/.test(telefoneNumerico)
+      ) {
+        toast({
+          title: "Dados de contato incompletos",
+          description: "Informe seu nome e um telefone válido com DDD para o estabelecimento entrar em contato.",
+          variant: "destructive",
+        });
+        return;
+      }
       // Only validate address fields if we're not using a saved address
       if (
         tipoEntrega === 'entrega'
@@ -968,7 +980,7 @@ export const CheckoutModal = ({
                                     />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label htmlFor="telefone">Telefone (opcional)</Label>
+                                    <Label htmlFor="telefone">Telefone com DDD *</Label>
                                     <Input 
                                       id="telefone" 
                                       value={orderData.telefone} 
@@ -1109,7 +1121,7 @@ export const CheckoutModal = ({
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="telefone">Telefone (opcional)</Label>
+                              <Label htmlFor="telefone">Telefone com DDD *</Label>
                               <Input 
                                 id="telefone" 
                                 value={orderData.telefone} 
@@ -1218,6 +1230,83 @@ export const CheckoutModal = ({
                         </>
                       )}
                     </>
+                  )}
+
+                  {tipoEntrega === 'retirada' && (
+                    <section className="delivery-pickup-contact">
+                      <div>
+                        <span>Contato para retirada</span>
+                        <p>Usaremos estes dados somente se precisarmos falar sobre o pedido.</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="nome-retirada">Nome completo *</Label>
+                          <Input
+                            id="nome-retirada"
+                            value={orderData.nomeDestinatario}
+                            onChange={(event) => setOrderData({
+                              ...orderData,
+                              nomeDestinatario: event.target.value,
+                            })}
+                            placeholder="Quem vai retirar?"
+                            autoComplete="name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="telefone-retirada">Telefone com DDD *</Label>
+                          <Input
+                            id="telefone-retirada"
+                            value={orderData.telefone}
+                            onChange={(event) => setOrderData({
+                              ...orderData,
+                              telefone: event.target.value,
+                            })}
+                            placeholder="(00) 00000-0000"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            maxLength={20}
+                          />
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {tipoEntrega === 'entrega' && usandoEnderecoSalvo && (
+                    <section className="delivery-pickup-contact">
+                      <div>
+                        <span>Contato do pedido</span>
+                        <p>Confirme o telefone para receber contato sobre a entrega.</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="nome-contato-entrega">Nome completo *</Label>
+                          <Input
+                            id="nome-contato-entrega"
+                            value={orderData.nomeDestinatario}
+                            onChange={(event) => setOrderData({
+                              ...orderData,
+                              nomeDestinatario: event.target.value,
+                            })}
+                            autoComplete="name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="telefone-contato-entrega">Telefone com DDD *</Label>
+                          <Input
+                            id="telefone-contato-entrega"
+                            value={orderData.telefone}
+                            onChange={(event) => setOrderData({
+                              ...orderData,
+                              telefone: event.target.value,
+                            })}
+                            placeholder="(00) 00000-0000"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            maxLength={20}
+                          />
+                        </div>
+                      </div>
+                    </section>
                   )}
                   
                   {tipoEntrega === 'entrega' && user && !usandoEnderecoSalvo && (
