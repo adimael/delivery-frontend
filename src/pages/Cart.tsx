@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, ReceiptText, ShoppingBag, Tag, Trash2 } from "lucide-react";
+import { ArrowLeft, Minus, Plus, ReceiptText, ShoppingBag, Store, Tag, Trash2, Truck } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { useToast } from "@/hooks/use-toast";
 import { useCartStore } from "@/stores/cartStore";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/api";
 
 const money = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -15,9 +17,17 @@ const money = (value: number) =>
 const Cart = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { items, updateQuantity, removeItem } = useCartStore();
   const { configuracao, loading, estaAberto } = useEstabelecimento();
   const [couponCode, setCouponCode] = useState("");
+  const [tipoEntrega, setTipoEntrega] = useState<"entrega" | "retirada">("entrega");
+  const [validandoCupom, setValidandoCupom] = useState(false);
+  const [cupomAplicado, setCupomAplicado] = useState<{
+    codigo: string;
+    desconto: number;
+    descricao?: string;
+  } | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   const toNumber = (value: unknown): number => {
@@ -33,6 +43,13 @@ const Cart = () => {
     () => items.reduce((total, item) => total + toNumber(item.totalPrice ?? item.price * item.quantity), 0),
     [items],
   );
+  const minimoFreteGratis = toNumber(configuracao?.valor_minimo_frete_gratis);
+  const taxaEntrega = tipoEntrega === "entrega"
+    && !(minimoFreteGratis > 0 && subtotal >= minimoFreteGratis)
+    ? toNumber(configuracao?.taxa_entrega)
+    : 0;
+  const desconto = cupomAplicado?.desconto || 0;
+  const total = Math.max(0, subtotal + taxaEntrega - desconto);
   const handleRemoveItem = (itemId: string) => {
     removeItem(itemId);
     toast({ title: "Item removido", description: "O carrinho foi atualizado." });
@@ -46,10 +63,44 @@ const Cart = () => {
     if (items.length > 0) setIsCheckoutOpen(true);
   };
 
-  const handleApplyCoupon = () => {
-    if (!couponCode.trim()) return;
-    toast({ title: "Cupom não encontrado", description: "Confira o código informado e tente novamente.", variant: "destructive" });
-    setCouponCode("");
+  const handleApplyCoupon = async () => {
+    const codigo = couponCode.trim().toUpperCase();
+    if (!codigo || validandoCupom) return;
+
+    setValidandoCupom(true);
+    try {
+      const resultado = await apiRequest(user ? "/cupons/validar-autenticado" : "/cupons/validar", {
+        method: "POST",
+        body: JSON.stringify({
+          codigo,
+          subtotal,
+          itens: items.map((item) => ({
+            produto_id: item.id,
+            total: item.totalPrice ?? item.price * item.quantity,
+          })),
+        }),
+      });
+      if (resultado.exige_cadastro && !user) {
+        throw new Error("Este cupom é exclusivo para clientes cadastrados.");
+      }
+      const codigoValidado = String(resultado.codigo || codigo).toUpperCase();
+      setCouponCode(codigoValidado);
+      setCupomAplicado({
+        codigo: codigoValidado,
+        desconto: toNumber(resultado.desconto),
+        descricao: typeof resultado.descricao === "string" ? resultado.descricao : undefined,
+      });
+      toast({ title: "Cupom aplicado", description: `Você ganhou ${money(toNumber(resultado.desconto))} de desconto.` });
+    } catch (error) {
+      setCupomAplicado(null);
+      toast({
+        title: "Cupom não aplicado",
+        description: error instanceof Error ? error.message : "Confira o código e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setValidandoCupom(false);
+    }
   };
 
   const customizationLines = (customizations: unknown): string[] => {
@@ -116,25 +167,44 @@ const Cart = () => {
             </section>
 
             <aside className="delivery-cart-summary">
+              <section className="delivery-cart-delivery-type" aria-labelledby="delivery-type-title">
+                <div><span>Como deseja receber?</span><h2 id="delivery-type-title">Tipo de entrega</h2></div>
+                <div role="radiogroup" aria-label="Tipo de entrega">
+                  <button type="button" role="radio" aria-checked={tipoEntrega === "entrega"} className={tipoEntrega === "entrega" ? "is-selected" : ""} onClick={() => setTipoEntrega("entrega")}>
+                    <Truck /><span><strong>Entrega</strong><small>Receber no endereço</small></span>
+                  </button>
+                  <button type="button" role="radio" aria-checked={tipoEntrega === "retirada"} className={tipoEntrega === "retirada" ? "is-selected" : ""} onClick={() => setTipoEntrega("retirada")}>
+                    <Store /><span><strong>Retirada</strong><small>Buscar no estabelecimento</small></span>
+                  </button>
+                </div>
+              </section>
               <header><ReceiptText /><div><h2>Resumo do pedido</h2><p>Confira antes de continuar</p></div></header>
               <div className="delivery-cart-coupon">
                 <label htmlFor="coupon"><Tag /> Tem um cupom?</label>
-                <div><Input id="coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Digite o código" /><Button variant="outline" onClick={handleApplyCoupon} disabled={!couponCode.trim()}>Aplicar</Button></div>
+                <div><Input id="coupon" value={couponCode} onChange={(event) => { setCouponCode(event.target.value.toUpperCase()); setCupomAplicado(null); }} placeholder="Digite o código" /><Button variant="outline" onClick={() => void handleApplyCoupon()} disabled={!couponCode.trim() || validandoCupom}>{validandoCupom ? "Validando" : "Aplicar"}</Button></div>
+                {cupomAplicado && <p className="delivery-cart-coupon-success">Cupom {cupomAplicado.codigo} aplicado.</p>}
               </div>
               <dl>
                 <div><dt>Subtotal</dt><dd>{money(subtotal)}</dd></div>
-                <div><dt>Taxa de entrega</dt><dd className="is-free">Somente se escolher entrega</dd></div>
-                <div className="delivery-cart-total"><dt>Subtotal atual</dt><dd>{loading ? "—" : money(subtotal)}</dd></div>
+                <div><dt>{tipoEntrega === "entrega" ? "Taxa de entrega" : "Retirada no local"}</dt><dd className={taxaEntrega === 0 ? "is-free" : ""}>{taxaEntrega === 0 ? "Grátis" : money(taxaEntrega)}</dd></div>
+                {cupomAplicado && <div className="delivery-cart-discount"><dt>Desconto</dt><dd>-{money(desconto)}</dd></div>}
+                <div className="delivery-cart-total"><dt>Total</dt><dd>{loading ? "—" : money(total)}</dd></div>
               </dl>
               <Button className="delivery-cart-checkout btn-primary" onClick={handleCheckout} disabled={loading || !estaAberto}>
                 {loading ? "Preparando pedido..." : estaAberto ? "Continuar para entrega e pagamento" : "Fechado no momento"}
               </Button>
-              <p className="delivery-cart-secure">Você poderá escolher entrega ou retirada e a forma de pagamento na próxima etapa.</p>
+              <p className="delivery-cart-secure">Você pode alterar o tipo acima. O servidor confirmará os valores ao finalizar.</p>
             </aside>
           </div>
         )}
       </div>
-      <CheckoutModal open={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} onFinishOrder={() => setIsCheckoutOpen(false)} />
+      <CheckoutModal
+        open={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        onFinishOrder={() => setIsCheckoutOpen(false)}
+        tipoEntregaInicial={tipoEntrega}
+        cupomInicial={cupomAplicado}
+      />
     </MainLayout>
   );
 };

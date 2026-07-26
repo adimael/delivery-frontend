@@ -83,9 +83,21 @@ interface CheckoutModalProps {
   open: boolean;
   onClose: () => void;
   onFinishOrder: (orderData: Record<string, unknown>) => void;
+  tipoEntregaInicial?: 'entrega' | 'retirada';
+  cupomInicial?: {
+    codigo: string;
+    desconto: number;
+    descricao?: string;
+  } | null;
 }
 
-export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalProps) => {
+export const CheckoutModal = ({
+  open,
+  onClose,
+  onFinishOrder,
+  tipoEntregaInicial = 'entrega',
+  cupomInicial = null,
+}: CheckoutModalProps) => {
   const GUEST_ADDRESS_KEY = 'deliveryGuestAddress';
   const { user } = useAuth();
   const { items, clearCart } = useCartStore();
@@ -95,8 +107,8 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<'delivery-type' | 'address' | 'payment' | 'pix'>('delivery-type');
-  const [tipoEntrega, setTipoEntrega] = useState<'entrega' | 'retirada'>('entrega');
+  const [step, setStep] = useState<'address' | 'payment' | 'pix'>('address');
+  const [tipoEntrega, setTipoEntrega] = useState<'entrega' | 'retirada'>(tipoEntregaInicial);
   const [numeroOrdem, setNumeroOrdem] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [pixCopiaECola, setPixCopiaECola] = useState('');
@@ -430,14 +442,14 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         enderecoVisitante = {};
       }
     }
-    setStep('delivery-type');
-    setTipoEntrega('entrega');
+    setStep('address');
+    setTipoEntrega(tipoEntregaInicial);
     setNumeroOrdem('');
     setUseSavedAddress(true);
     setSelectedEnderecoId('');
     setSalvarNovoEndereco(true);
-    setCupomCodigo('');
-    setCupomAplicado(null);
+    setCupomCodigo(cupomInicial?.codigo || '');
+    setCupomAplicado(cupomInicial);
     setPedidoCriado(null);
     setAreaIndisponivel('');
     setPrecisaTroco(false);
@@ -459,7 +471,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
     });
     setQrCodeUrl('');
     setPixCopiaECola('');
-  }, [user]);
+  }, [user, tipoEntregaInicial, cupomInicial]);
 
   const excluirEnderecoVisitante = () => {
     localStorage.removeItem(GUEST_ADDRESS_KEY);
@@ -551,9 +563,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
       return;
     }
 
-    if (step === 'delivery-type') {
-      setStep('address');
-    } else if (step === 'address') {
+    if (step === 'address') {
       // Only validate address fields if we're not using a saved address
       if (
         tipoEntrega === 'entrega'
@@ -692,7 +702,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
 
   const handleBack = () => {
     if (step === 'address') {
-      setStep('delivery-type');
+      onClose();
     } else if (step === 'payment') {
       setStep('address');
     } else if (step === 'pix') {
@@ -916,51 +926,13 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              {step === 'delivery-type' && 'Tipo de Entrega'}
-              {step === 'address' && 'Endereço de Entrega'}
+              {step === 'address' && (tipoEntrega === 'entrega' ? 'Endereço de Entrega' : 'Dados para Retirada')}
               {step === 'payment' && 'Forma de Pagamento'}
               {step === 'pix' && 'Pagamento PIX'}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
-            {step === 'delivery-type' && (
-              <>
-                <div className="space-y-4">
-                  <RadioGroup value={tipoEntrega} onValueChange={(value: string) => setTipoEntrega(value as 'entrega' | 'retirada')}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="entrega" id="entrega" />
-                      <Label htmlFor="entrega">Entrega</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="retirada" id="retirada" />
-                      <Label htmlFor="retirada">Retirada no Local</Label>
-                    </div>
-                  </RadioGroup>
-                  
-                  {tipoEntrega === 'retirada' && (
-                    <div className="p-3 bg-gray-100 rounded-md text-sm">
-                      <p className="font-medium">Endereço para retirada:</p>
-                      <p>{enderecoEstabelecimento}</p>
-                      <p>{cidadeEstabelecimento}-{estadoEstabelecimento}, CEP: {cepEstabelecimento}</p>
-                      <p className="mt-2 text-xs text-gray-600">
-                        * Taxa de entrega: Grátis para retirada
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={onClose}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleNext} className="btn-primary">
-                    Próximo
-                  </Button>
-                </div>
-              </>
-            )}
-
             {step === 'address' && (
               <>
                 <div className="space-y-4">
