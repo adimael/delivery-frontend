@@ -10,6 +10,7 @@ import { Receipt, MessageSquare, User, CheckCircle, MapPin } from "lucide-react"
 import { Pedido } from '@/hooks/useSupabaseData';
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
+import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
 type ItemPedido = Pedido['itens_pedido'][number];
 
@@ -95,16 +96,30 @@ const StaffOrders = () => {
     }
     
     const items = pedido.itens_pedido.map(item => {
-      let customizations = null;
+      let customizations: any = {
+        selections: Array.isArray(item.selecoes) ? item.selecoes : [],
+        variations: item.variacao_nome ? {
+          [item.tipo_variacao || 'Variação']: {
+            nome: item.variacao_nome,
+          },
+        } : {},
+        notes: '',
+      };
       let name = item.produto_nome || 'Produto';
       try {
         if (item.observacoes) {
           const parsed = JSON.parse(item.observacoes);
           name = parsed.nome || name;
-          customizations = parsed.customizations;
+          customizations = {
+            ...customizations,
+            ...(parsed.customizations || {}),
+            selections: customizations.selections.length > 0
+              ? customizations.selections
+              : parsed.customizations?.selections || [],
+          };
         }
-      } catch (e) {
-        // Se não conseguir fazer parse, usa valores padrão
+      } catch {
+        customizations.notes = item.observacoes || '';
       }
       return {
         id: item.id,
@@ -264,63 +279,11 @@ const StaffOrders = () => {
 
                       <div>
                         <h4 className="font-medium mb-2">Itens do Pedido:</h4>
-                        <ul className="space-y-1">
-                          {pedido.itens_pedido.map((item: ItemPedido) => {
-                            let nomeExibicao = item.produto_nome || 'Produto';
-                            let variacoes: string[] = [];
-                            let observacoesPersonalizadas = "";
-                            if (item.observacoes) {
-                              try {
-                                const obs = JSON.parse(item.observacoes);
-                                nomeExibicao = obs.nome || nomeExibicao;
-                                if (obs.customizations && obs.customizations.variations && typeof obs.customizations.variations === 'object') {
-                                  variacoes = Object.entries(obs.customizations.variations).map(
-                                    ([tipo, valor]: [string, unknown]) => `${tipo}: ${typeof valor === 'object' && valor !== null && 'nome' in valor ? (valor as { nome: string }).nome : valor}`
-                                  );
-                                } else if (obs.variacoes && typeof obs.variacoes === 'object') {
-                                  variacoes = Object.entries(obs.variacoes).map(
-                                    ([tipo, valor]) => `${tipo}: ${valor}`
-                                  );
-                                } else if (obs.opcoes && typeof obs.opcoes === 'object') {
-                                  variacoes = Object.entries(obs.opcoes).map(
-                                    ([tipo, valor]) => `${tipo}: ${valor}`
-                                  );
-                                } else if (obs.opcao) {
-                                  variacoes = [`Opção: ${obs.opcao}`];
-                                }
-                                if (obs.customizations && obs.customizations.notes) {
-                                  observacoesPersonalizadas = obs.customizations.notes;
-                                } else if (obs.observacoes) {
-                                  observacoesPersonalizadas = obs.observacoes;
-                                }
-                              } catch (e) {
-                                // ignorar erro de parse
-                              }
-                            }
-                            return (
-                              <li key={item.id} className="flex justify-between text-sm">
-                                <span>
-                                  {item.quantidade}x {nomeExibicao}
-                                  {variacoes.length > 0 && (
-                                    <span className="ml-2 flex flex-wrap gap-1">
-                                      {variacoes.map((v, i) => (
-                                        <span key={i} className="bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs font-semibold">{v}</span>
-                                      ))}
-                                    </span>
-                                  )}
-                                  {observacoesPersonalizadas && (
-                                    <span className="text-gray-500 block ml-4">
-                                      {observacoesPersonalizadas}
-                                    </span>
-                                  )}
-                                </span>
-                                <span>
-                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
+                        <div className="grid gap-3">
+                          {pedido.itens_pedido.map((item: ItemPedido) => (
+                            <OrderItemDetails key={item.id} item={item} />
+                          ))}
+                        </div>
                       </div>
                       
                       <div>

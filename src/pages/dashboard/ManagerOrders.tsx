@@ -12,6 +12,7 @@ import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2
 import { apiRequest } from "@/lib/api";
 import { ativarSomNovoPedido, somNovoPedidoAtivo } from "@/lib/notificationSound";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
+import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
 const ManagerOrders = () => {
   const { pedidos, loading, atualizarStatusPedido, newOrdersCount, markOrdersSeen, refreshPedidos } = usePedidos();
@@ -171,16 +172,30 @@ const ManagerOrders = () => {
     }
     
     const items = pedido.itens_pedido.map((item: any) => {
-      let customizations = null;
+      let customizations: any = {
+        selections: Array.isArray(item.selecoes) ? item.selecoes : [],
+        variations: item.variacao_nome ? {
+          [item.tipo_variacao || 'Variação']: {
+            nome: item.variacao_nome,
+          },
+        } : {},
+        notes: '',
+      };
       let name = item.produto_nome || 'Produto';
       try {
         if (item.observacoes) {
           const parsed = JSON.parse(item.observacoes);
           name = parsed.nome || name;
-          customizations = parsed.customizations;
+          customizations = {
+            ...customizations,
+            ...(parsed.customizations || {}),
+            selections: customizations.selections.length > 0
+              ? customizations.selections
+              : parsed.customizations?.selections || [],
+          };
         }
-      } catch (e) {
-        // Se não conseguir fazer parse, usa valores padrão
+      } catch {
+        customizations.notes = item.observacoes || '';
       }
       return {
         id: item.id,
@@ -384,46 +399,11 @@ const ManagerOrders = () => {
                     <div className="space-y-2">
                       <h4 className="font-medium">Itens do Pedido:</h4>
                       {pedido.itens_pedido && pedido.itens_pedido.length > 0 ? (
-                        pedido.itens_pedido.map((item) => {
-                          let variacoes: string[] = [];
-                          if (item.observacoes) {
-                            try {
-                              const obs = JSON.parse(item.observacoes);
-                              // Verificações para diferentes formatos de variações
-                              if (obs.customizations && obs.customizations.variations && typeof obs.customizations.variations === 'object') {
-                                variacoes = Object.entries(obs.customizations.variations).map(
-                                  ([tipo, valor]: [string, unknown]) => `- ${tipo}: ${typeof valor === 'object' && valor !== null && 'nome' in valor ? (valor as { nome: string }).nome : valor}`
-                                );
-                              } else if (obs.variacoes && typeof obs.variacoes === 'object') {
-                                variacoes = Object.entries(obs.variacoes).map(
-                                  ([tipo, valor]) => `- ${tipo}: ${valor}`
-                                );
-                              } else if (obs.opcoes && typeof obs.opcoes === 'object') {
-                                variacoes = Object.entries(obs.opcoes).map(
-                                  ([tipo, valor]) => `- ${tipo}: ${valor}`
-                                );
-                              } else if (obs.opcao) {
-                                variacoes = [`- Opção: ${obs.opcao}`];
-                              }
-                            } catch (e) {
-                              // ignorar erro de parse
-                            }
-                          }
-                          return (
-                            <div key={item.id} className="text-sm">
-                              {item.quantidade}x {item.produto_nome || 'Produto'}
-                              {variacoes.length > 0 && (
-                                <span className="ml-2 flex flex-wrap gap-1">
-                                  {variacoes.map((v, i) => (
-                                    <span key={i} className="bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs font-semibold">{v.replace('- ', '')}</span>
-                                  ))}
-                                </span>
-                              )}
-                              {" - "}
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}
-                            </div>
-                          );
-                        })
+                        <div className="grid gap-3">
+                          {pedido.itens_pedido.map((item) => (
+                            <OrderItemDetails key={item.id} item={item} />
+                          ))}
+                        </div>
                       ) : (
                         <p className="text-sm text-gray-500">Nenhum item no pedido</p>
                       )}

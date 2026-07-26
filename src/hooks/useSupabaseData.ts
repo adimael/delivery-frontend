@@ -49,9 +49,19 @@ export interface Pedido {
     id: string;
     quantidade: number;
     preco_unitario: number;
+    preco_adicionais?: number;
     preco_total: number;
     observacoes?: string;
     produto_nome?: string;
+    variacao_nome?: string | null;
+    tipo_variacao?: string | null;
+    selecoes?: Array<{
+      id?: string;
+      nome?: string;
+      categoria?: string;
+      quantidade?: number;
+      preco_adicional?: number;
+    }> | string | null;
   }>;
 }
 

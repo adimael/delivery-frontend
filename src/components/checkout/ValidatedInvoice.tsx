@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { CheckCircle } from "lucide-react";
+import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
 interface ItemOption {
   name: string;
@@ -14,11 +15,16 @@ interface ItemCustomizations {
 }
 
 interface InvoiceItem {
+  id?: string;
   produto_nome?: string;
   observacoes?: string;
-  quantidade?: number;
+  quantidade: number;
   preco_unitario?: number;
-  preco_total?: number;
+  preco_total: number;
+  preco_adicionais?: number;
+  variacao_nome?: string | null;
+  tipo_variacao?: string | null;
+  selecoes?: any[] | string | null;
 }
 
 interface InvoiceData {
@@ -139,41 +145,11 @@ export const ValidatedInvoice = ({ invoiceData }: ValidatedInvoiceProps) => {
             <div className="col-span-2 text-right">Preço Unit.</div>
             <div className="col-span-2 text-right">Total</div>
           </div>
-          {(invoiceData.itens_pedido || []).map((item: InvoiceItem, index: number) => {
-            const customizations = parseItemCustomizations(item.observacoes);
-            const itemName = getItemName(item);
-            
-            return (
-              <div key={index} className="grid grid-cols-12 gap-2 p-3 border-t text-sm">
-                <div className="col-span-6">
-                  <div className="font-medium">{itemName}</div>
-                  {customizations && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {customizations.mainOptions?.length > 0 && (
-                        <div>Acompanhamentos: {customizations.mainOptions.map((opt: ItemOption) => opt.name).join(", ")}</div>
-                      )}
-                      {customizations.meatOptions?.length > 0 && (
-                        <div>Carnes: {customizations.meatOptions.map((opt: ItemOption) => opt.name).join(", ")}</div>
-                      )}
-                      {customizations.extraOptions?.length > 0 && (
-                        <div>Extras: {customizations.extraOptions.map((opt: ItemOption) => opt.name).join(", ")}</div>
-                      )}
-                      {customizations.notes && (
-                        <div>Obs: {customizations.notes}</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="col-span-2 text-center">{item.quantidade}</div>
-                <div className="col-span-2 text-right">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario)}
-                </div>
-                <div className="col-span-2 text-right">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}
-                </div>
-              </div>
-            );
-          })}
+          <div className="grid gap-3 p-3">
+            {(invoiceData.itens_pedido || []).map((item: InvoiceItem, index: number) => (
+              <OrderItemDetails key={item.id || index} item={item} />
+            ))}
+          </div>
         </div>
       </div>
 
