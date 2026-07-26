@@ -1247,14 +1247,6 @@ export const CheckoutModal = ({
                   </div>
                 </div>
                 
-                <div className="delivery-checkout-actions">
-                  <Button variant="outline" onClick={handleBack}>
-                    <ArrowLeft /> Voltar
-                  </Button>
-                  <Button onClick={handleNext} className="btn-primary">
-                    Próximo <ArrowRight />
-                  </Button>
-                </div>
               </>
             )}
 
@@ -1375,14 +1367,6 @@ export const CheckoutModal = ({
                   </div>
                 </div>
                 
-                <div className="delivery-checkout-actions">
-                  <Button variant="outline" onClick={handleBack}>
-                    <ArrowLeft /> Voltar
-                  </Button>
-                  <Button onClick={handleNext} className="btn-primary">
-                    {orderData.formaPagamento === 'pix' ? 'Pagar com PIX' : 'Finalizar Pedido'} <ArrowRight />
-                  </Button>
-                </div>
               </>
             )}
 
@@ -1439,17 +1423,48 @@ export const CheckoutModal = ({
                   </div>
                 </div>
                 
-                <div className="space-y-3">
+                <div>
                   <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-900">
                     O pedido foi registrado e ficará aguardando a confirmação do pagamento.
                   </p>
-                  <Button onClick={handleFinishOrder} className="btn-primary">
-                    Já efetuei o PIX
-                  </Button>
                 </div>
               </>
             )}
           </div>
+          <footer className="delivery-checkout-footer">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={step === 'address' ? onClose : handleBack}
+              disabled={isSubmitting}
+            >
+              <ArrowLeft />
+              {step === 'address' ? 'Cancelar' : 'Voltar'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (step === 'pix') {
+                  void handleFinishOrder();
+                  return;
+                }
+                void handleNext();
+              }}
+              className="btn-primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting
+                ? 'Processando...'
+                : step === 'address'
+                  ? 'Avançar para pagamento'
+                  : step === 'payment'
+                    ? orderData.formaPagamento === 'pix'
+                      ? 'Gerar pagamento PIX'
+                      : 'Finalizar pedido'
+                    : 'Já efetuei o PIX'}
+              {!isSubmitting && <ArrowRight />}
+            </Button>
+          </footer>
         </DialogContent>
       </Dialog>
 
