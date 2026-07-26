@@ -14,6 +14,12 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: true,
       },
+      "/cep": {
+        target: "https://viacep.com.br",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/cep\/(\d{8})$/, "/ws/$1/json/"),
+      },
     },
   },
   preview: {
@@ -24,6 +30,12 @@ export default defineConfig(({ mode }) => ({
         target: "https://vupi.us",
         changeOrigin: true,
         secure: true,
+      },
+      "/cep": {
+        target: "https://viacep.com.br",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/cep\/(\d{8})$/, "/ws/$1/json/"),
       },
     },
   },
