@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useProductOptions, type ProdutoOpcaoCompleta } from "@/hooks/useProductOptions";
-import { useProductVariations } from "@/hooks/useProductVariations";
+import { useProductVariations, type ProductVariation } from "@/hooks/useProductVariations";
 
 interface Props {
   product: { id: string; name: string; price: number; image: string };
@@ -46,19 +46,25 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [rawOptions, setRawOptions] = useState<ProdutoOpcaoCompleta[]>([]);
+  const [productVariations, setProductVariations] = useState<ProductVariation[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { getOpcoesParaProduto } = useProductOptions();
-  const { getVariationsByProduct, refetch: refetchVariations } = useProductVariations();
-  const productVariations = getVariationsByProduct(product.id);
+  const { getOpcoesParaProduto } = useProductOptions({ loadAdminData: false });
+  const { getVariationsByProductAsync } = useProductVariations({ loadAdminData: false });
   const variationTypes = [...new Set(productVariations.map((item) => item.tipo_variacao))];
   const basePrice = Number(product.price) || 0;
 
   useEffect(() => {
     if (!open || !product.id) return;
     setLoading(true);
-    Promise.all([getOpcoesParaProduto(product.id), refetchVariations()])
-      .then(([options]) => setRawOptions(options))
+    Promise.all([
+      getOpcoesParaProduto(product.id),
+      getVariationsByProductAsync(product.id),
+    ])
+      .then(([options, variations]) => {
+        setRawOptions(options);
+        setProductVariations(variations);
+      })
       .catch(() => {
         toast({ title: "Não foi possível carregar as opções", variant: "destructive" });
       })

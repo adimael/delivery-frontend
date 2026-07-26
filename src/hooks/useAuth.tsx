@@ -39,11 +39,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const restore = async () => {
       const token = localStorage.getItem('authToken');
-      if (!token) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!token && !refreshToken) {
         setLoading(false);
         return;
       }
       try {
+        const sessionReady = await ensureFreshSession();
+        if (!sessionReady) {
+          throw new Error('Sessão expirada.');
+        }
         const profile = normalizeProfile(await authAPI.getProfile());
         localStorage.setItem('user', JSON.stringify(profile));
         setUser(profile);

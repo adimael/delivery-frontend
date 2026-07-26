@@ -83,8 +83,41 @@ export const ensureFreshSession = async (minimumValiditySeconds = 120): Promise<
   return refreshSession();
 };
 
+const requiresAuthentication = (path: string, method: string): boolean => {
+  const protectedPrefixes = [
+    '/admin/',
+    '/notificacoes',
+    '/equipe',
+    '/entregador',
+    '/perfis',
+    '/enderecos',
+    '/chat',
+  ];
+
+  if (protectedPrefixes.some((prefix) => path === prefix || path.startsWith(prefix))) {
+    return true;
+  }
+  if (path === '/auth/profile' || path === '/auth/change-password') return true;
+  if (path === '/configuracao' && method !== 'GET') return true;
+  if (path === '/pedidos' || path.startsWith('/pedidos/')) {
+    return !path.startsWith('/pedidos/validar/');
+  }
+
+  return false;
+};
+
 export const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const method = String(options.method || 'GET').toUpperCase();
+  const protectedRequest = requiresAuthentication(path, method);
+
+  if (protectedRequest) {
+    const authenticated = await ensureFreshSession();
+    if (!authenticated) {
+      throw new ApiError('Sua sessão expirou. Entre novamente.', 401);
+    }
+  }
+
   const token = localStorage.getItem('authToken');
   const headers = new Headers(options.headers);
 
