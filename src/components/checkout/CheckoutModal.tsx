@@ -112,6 +112,7 @@ export const CheckoutModal = ({
   const [numeroOrdem, setNumeroOrdem] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [pixCopiaECola, setPixCopiaECola] = useState('');
+  const [pixError, setPixError] = useState('');
   const [useSavedAddress, setUseSavedAddress] = useState(true);
   const [selectedEnderecoId, setSelectedEnderecoId] = useState('');
   const [salvarNovoEndereco, setSalvarNovoEndereco] = useState(true);
@@ -468,6 +469,7 @@ export const CheckoutModal = ({
     });
     setQrCodeUrl('');
     setPixCopiaECola('');
+    setPixError('');
   }, [user, tipoEntregaInicial, cupomInicial]);
 
   const excluirEnderecoVisitante = () => {
@@ -521,6 +523,7 @@ export const CheckoutModal = ({
     const prepararPix = async () => {
      if (step === 'pix' && configuracao?.chave_pix && pedidoCriado) {
       try {
+        setPixError('');
         const newNumeroOrdem = String(pedidoCriado.numero_pedido);
         setNumeroOrdem(newNumeroOrdem);
         
@@ -531,7 +534,8 @@ export const CheckoutModal = ({
           cidadeRecebedor: configuracao.cidade_recebedor_pix || '',
           cepRecebedor: configuracao.cep_recebedor_pix || '',
           valor: Number(pedidoCriado.valor_total),
-          txid: newNumeroOrdem
+          txid: newNumeroOrdem,
+          descricao: `PEDIDO ${newNumeroOrdem}`,
         };
         
         // Generate the PIX payload string
@@ -542,8 +546,17 @@ export const CheckoutModal = ({
         const qrCodeUrl = await generatePixQRCode(pixPayload);
         setQrCodeUrl(qrCodeUrl);
       } catch (error) {
-        console.error('Error generating PIX QR code:', error);
+        const mensagem = error instanceof Error
+          ? error.message
+          : 'Não foi possível gerar o pagamento PIX.';
+        setPixError(mensagem);
         setQrCodeUrl('');
+        setPixCopiaECola('');
+        toast({
+          title: 'Configuração PIX inválida',
+          description: mensagem,
+          variant: 'destructive',
+        });
       }
      }
     };
@@ -1462,11 +1475,17 @@ export const CheckoutModal = ({
               <>
                 <div className="space-y-4 text-center">
                   <div className="p-4 bg-gray-100 rounded-lg">
-                    <QrCode className="h-32 w-32 mx-auto" />
-                    {qrCodeUrl && (
+                    {qrCodeUrl ? (
                       <img src={qrCodeUrl} alt="QR Code PIX" className="h-32 w-32 mx-auto" />
+                    ) : (
+                      <QrCode className="h-32 w-32 mx-auto" />
                     )}
                   </div>
+                  {pixError && (
+                    <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800">
+                      {pixError}
+                    </p>
+                  )}
                   
                   <div className="text-sm space-y-2">
                     <p className="font-medium">Valor: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(pedidoCriado?.valor_total || 0))}</p>
@@ -1539,7 +1558,7 @@ export const CheckoutModal = ({
                 void handleNext();
               }}
               className="btn-primary"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (step === 'pix' && Boolean(pixError))}
             >
               {isSubmitting
                 ? 'Processando...'
