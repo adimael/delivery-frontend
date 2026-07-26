@@ -5,15 +5,28 @@ import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import type { MouseEvent } from "react";
 
 interface ItemOption {
-  name: string;
+  name?: string;
+  nome?: string;
+  categoria?: string;
+  quantidade?: number;
+  preco_adicional?: number;
 }
 
 interface ItemCustomizations {
   mainOptions?: ItemOption[];
   meatOptions?: ItemOption[];
   extraOptions?: ItemOption[];
+  selections?: ItemOption[];
+  variations?: Record<string, ItemOption>;
   notes?: string;
 }
+
+const selecoesPorCategoria = (selecoes: ItemOption[] = []) =>
+  selecoes.reduce<Record<string, ItemOption[]>>((grupos, opcao) => {
+    const categoria = opcao.categoria || 'Outras opções';
+    grupos[categoria] = [...(grupos[categoria] || []), opcao];
+    return grupos;
+  }, {});
 
 interface InvoiceItem {
   name: string;
@@ -163,6 +176,27 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
                         {item.customizations.extraOptions?.length > 0 && (
                           <div>Extras: {item.customizations.extraOptions.map((opt: ItemOption) => opt.name).join(", ")}</div>
                         )}
+                        {item.customizations.variations
+                          && Object.keys(item.customizations.variations).length > 0 && (
+                          <div>
+                            Variações: {Object.values(item.customizations.variations)
+                              .map((opt) => opt.nome || opt.name)
+                              .filter(Boolean)
+                              .join(', ')}
+                          </div>
+                        )}
+                        {Object.entries(
+                          selecoesPorCategoria(item.customizations.selections),
+                        ).map(([categoria, opcoes]) => (
+                          <div key={categoria}>
+                            <strong>{categoria}:</strong>{' '}
+                            {opcoes.map((opcao) =>
+                              `${Number(opcao.quantidade || 1)}x ${
+                                opcao.nome || opcao.name || 'Opção'
+                              }`,
+                            ).join(', ')}
+                          </div>
+                        ))}
                         {item.customizations.notes && (
                           <div>Obs: {item.customizations.notes}</div>
                         )}

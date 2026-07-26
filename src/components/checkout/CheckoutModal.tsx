@@ -294,18 +294,43 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
       const personalizacoes = item.customizations as any;
       const variacoes = personalizacoes?.variations
         ? Object.values(personalizacoes.variations).map((variacao: any) =>
-            `   • ${variacao.nome || variacao.name || 'Variação selecionada'}`,
+            `      • ${variacao.nome || variacao.name || 'Variação selecionada'}${
+              Number(variacao.preco_adicional || 0) > 0
+                ? ` (+${moeda(variacao.preco_adicional)})`
+                : ''
+            }`,
           )
         : [];
-      const selecoes = Array.isArray(personalizacoes?.selections)
-        ? personalizacoes.selections.map((opcao: any) =>
-            `   + ${Number(opcao.quantidade || 1)}x ${opcao.nome || opcao.name || 'Adicional'}`,
-          )
-        : [];
+      const selecoesPorCategoria = new Map<string, any[]>();
+      if (Array.isArray(personalizacoes?.selections)) {
+        personalizacoes.selections.forEach((opcao: any) => {
+          const categoria = String(opcao.categoria || 'Outras opções').trim();
+          selecoesPorCategoria.set(
+            categoria,
+            [...(selecoesPorCategoria.get(categoria) || []), opcao],
+          );
+        });
+      }
+      const selecoes = [...selecoesPorCategoria.entries()].flatMap(
+        ([categoria, opcoes]) => [
+          `   *${categoria}*`,
+          ...opcoes.map((opcao: any) => {
+            const quantidade = Number(opcao.quantidade || 1);
+            const preco = Number(opcao.preco_adicional || 0);
+            return `      • ${quantidade}x ${
+              opcao.nome || opcao.name || 'Opção'
+            }${preco > 0 ? ` (+${moeda(preco * quantidade)})` : ''}`;
+          }),
+        ],
+      );
+      const observacaoItem = String(personalizacoes?.notes || '').trim();
       return [
-        `${indice + 1}. ${item.quantity}x ${item.name || 'Produto'} — ${moeda(item.totalPrice ?? item.price * item.quantity)}`,
-        ...variacoes,
+        `*${indice + 1}. ${item.quantity}x ${item.name || 'Produto'}*`,
+        `   Valor: ${moeda(item.totalPrice ?? item.price * item.quantity)}`,
+        ...(variacoes.length > 0 ? ['   *Variações*', ...variacoes] : []),
         ...selecoes,
+        ...(observacaoItem ? [`   *Observação:* ${observacaoItem}`] : []),
+        '',
       ];
     });
     const mensagem = [
@@ -316,7 +341,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
       `*Entrega:* ${tipoEntrega === 'retirada' ? 'Retirada no local' : 'Delivery'}`,
       `*Endereço:* ${pedido.endereco_entrega || 'Retirada no estabelecimento'}`,
       '',
-      '*ITENS*',
+      '*ITENS DO PEDIDO*',
       ...linhasItens,
       '',
       `Subtotal: ${moeda(pedido.subtotal ?? calculatedValues.subtotal)}`,
@@ -328,20 +353,6 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
     ].filter(Boolean).join('\n');
 
     return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-  };
-
-  const reservarWhatsApp = (): Window | null => configuracao?.whatsapp
-    ? window.open('about:blank', 'delivery-pedido-whatsapp')
-    : null;
-
-  const encaminharAoWhatsApp = (pedido: any, janela: Window | null) => {
-    const url = urlPedidoWhatsApp(pedido);
-    if (!url) {
-      janela?.close();
-      return;
-    }
-    if (janela) janela.location.href = url;
-    else window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Efeito para preencher automaticamente com o endereço principal do cliente
@@ -615,15 +626,12 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
           return;
         }
         if (isSubmitting) return;
-        const janelaWhatsApp = reservarWhatsApp();
         setIsSubmitting(true);
         try {
           const criado = await saveOrderToMySQL();
-          encaminharAoWhatsApp(criado, janelaWhatsApp);
           setPedidoCriado(criado);
           setStep('pix');
         } catch (error) {
-          janelaWhatsApp?.close();
           toast({
             title: 'Não foi possível criar o pedido',
             description: error instanceof Error ? error.message : 'Tente novamente.',
@@ -803,15 +811,11 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
   const handleFinishOrder = async () => {
     if (isSubmitting) return;
     
-    const janelaWhatsApp = pedidoCriado ? null : reservarWhatsApp();
     setIsSubmitting(true);
     
     try {
       // Save order to MySQL
       const createdOrder = pedidoCriado ?? await saveOrderToMySQL();
-      if (!pedidoCriado) {
-        encaminharAoWhatsApp(createdOrder, janelaWhatsApp);
-      }
       
       // Prepare invoice data with correct address information
       let enderecoCompleto = '';
@@ -862,7 +866,6 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
       // Call the onFinishOrder callback
       onFinishOrder(createdOrder);
     } catch (error: unknown) {
-      janelaWhatsApp?.close();
       const errMsg = error instanceof Error ? error.message : String(error);
       console.error('Erro ao finalizar pedido:', errMsg);
       const erroDeCobertura = errMsg.toLowerCase().includes('área de entrega')
