@@ -347,10 +347,14 @@ const ManagerOrders = () => {
                         <Badge className={
                           pedido.status_pagamento === 'confirmado'
                             ? 'bg-green-100 text-green-800'
+                            : pedido.status_pagamento === 'informado'
+                              ? 'bg-amber-500 text-white'
                             : 'bg-yellow-100 text-yellow-800'
                         }>
                           Pagamento {pedido.status_pagamento === 'confirmado'
                             ? 'confirmado'
+                            : pedido.status_pagamento === 'informado'
+                              ? 'informado pelo cliente'
                             : 'pendente'}
                         </Badge>
                         {pedido.forma_pagamento === 'pix' && (
@@ -370,6 +374,13 @@ const ManagerOrders = () => {
                           </Button>
                         )}
                       </div>
+                      {pedido.forma_pagamento === 'pix' && pedido.status_pagamento === 'informado' && (
+                        <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-sm text-amber-950">
+                          <strong className="block text-base">O cliente informou que efetuou o PIX</strong>
+                          Confira o recebimento no aplicativo bancário. Somente depois clique em
+                          “Confirmar PIX”.
+                        </div>
+                      )}
                       {pedido.observacoes && (
                         <div className="flex items-start mt-2">
                           <MessageSquare className="mr-2 h-4 w-4 mt-1 text-blue-600" />

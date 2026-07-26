@@ -817,7 +817,26 @@ export const CheckoutModal = ({
     
     try {
       // Save order to MySQL
-      const createdOrder = pedidoCriado ?? await saveOrderToMySQL();
+      let createdOrder = pedidoCriado ?? await saveOrderToMySQL();
+
+      if (
+        step === 'pix'
+        && createdOrder.status_pagamento !== 'informado'
+        && createdOrder.status_pagamento !== 'confirmado'
+      ) {
+        const tokenValidacao = String(createdOrder.token_validacao || '');
+        if (!tokenValidacao) {
+          throw new Error('Não foi possível identificar o pedido para informar o pagamento.');
+        }
+        createdOrder = await apiRequest(
+          `/checkout/pagamento-informado/${encodeURIComponent(tokenValidacao)}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({}),
+          },
+        );
+        setPedidoCriado(createdOrder);
+      }
       
       // Prepare invoice data with correct address information
       let enderecoCompleto = '';

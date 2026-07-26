@@ -11,6 +11,7 @@ import { Pedido } from '@/hooks/useSupabaseData';
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
+import { apiRequest } from "@/lib/api";
 
 type ItemPedido = Pedido['itens_pedido'][number];
 
@@ -37,7 +38,7 @@ const statusColorMap: Record<string, string> = {
 type StatusPedido = 'pendente' | 'confirmado' | 'preparando' | 'pronto' | 'saiu_entrega' | 'entregue' | 'cancelado';
 
 const StaffOrders = () => {
-  const { pedidos, loading, atualizarStatusPedido } = usePedidos();
+  const { pedidos, loading, atualizarStatusPedido, refreshPedidos } = usePedidos();
   const { configuracao } = useEstabelecimento();
   const { toast } = useToast();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -74,6 +75,28 @@ const StaffOrders = () => {
         title: "Erro",
         description: "Erro interno ao atualizar status do pedido.",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handlePaymentStatus = async (pedidoId: string, status: 'pendente' | 'confirmado') => {
+    try {
+      await apiRequest(`/pedidos/${pedidoId}/pagamento`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      await refreshPedidos();
+      toast({
+        title: status === 'confirmado' ? 'PIX confirmado' : 'Conferência reaberta',
+        description: status === 'confirmado'
+          ? 'O pagamento foi confirmado pela equipe.'
+          : 'O pagamento voltou para pendente.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Não foi possível atualizar o pagamento',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
       });
     }
   };
@@ -246,6 +269,44 @@ const StaffOrders = () => {
                   <CardContent>
       <div className="space-y-4">
         <DeliveryApprovalPanel />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">
+                          {pedido.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 'PIX'}
+                        </Badge>
+                        <Badge className={
+                          pedido.status_pagamento === 'confirmado'
+                            ? 'bg-green-100 text-green-800'
+                            : pedido.status_pagamento === 'informado'
+                              ? 'bg-amber-500 text-white'
+                              : 'bg-yellow-100 text-yellow-800'
+                        }>
+                          {pedido.status_pagamento === 'confirmado'
+                            ? 'Pagamento confirmado'
+                            : pedido.status_pagamento === 'informado'
+                              ? 'PIX informado pelo cliente'
+                              : 'Pagamento pendente'}
+                        </Badge>
+                        {pedido.forma_pagamento === 'pix' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void handlePaymentStatus(
+                              pedido.id,
+                              pedido.status_pagamento === 'confirmado' ? 'pendente' : 'confirmado',
+                            )}
+                          >
+                            {pedido.status_pagamento === 'confirmado'
+                              ? 'Reabrir conferência'
+                              : 'Confirmar PIX'}
+                          </Button>
+                        )}
+                      </div>
+                      {pedido.forma_pagamento === 'pix' && pedido.status_pagamento === 'informado' && (
+                        <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-sm text-amber-950">
+                          <strong className="block text-base">O cliente informou que efetuou o PIX</strong>
+                          Confira o recebimento no aplicativo bancário antes de confirmar.
+                        </div>
+                      )}
                       {/* Informações do entregador */}
                       {pedido.status === 'pronto' && hasDeliveryPerson && !isLocalPickup && (
                         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
