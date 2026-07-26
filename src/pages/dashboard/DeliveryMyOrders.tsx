@@ -104,6 +104,29 @@ const DeliveryMyOrders = () => {
     }
   };
 
+  const handleConfirmCashPayment = async (deliveryId: string) => {
+    setUpdatingOrder(deliveryId);
+    try {
+      await apiRequest(`/pedidos/${deliveryId}/pagamento`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'confirmado' }),
+      });
+      await refresh();
+      toast({
+        title: 'Pagamento em dinheiro confirmado',
+        description: 'O recebimento foi registrado no pedido.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Não foi possível confirmar o recebimento',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'saiu_entrega':
@@ -452,6 +475,15 @@ const DeliveryMyOrders = () => {
                     <div className="text-sm text-gray-500">
                       Taxa: R$ {delivery.taxa_entrega.toFixed(2)}
                     </div>
+                    <Badge className={
+                      delivery.status_pagamento === 'confirmado'
+                        ? 'mt-2 bg-green-100 text-green-800'
+                        : 'mt-2 bg-yellow-100 text-yellow-800'
+                    }>
+                      Pagamento {delivery.status_pagamento === 'confirmado'
+                        ? 'confirmado'
+                        : 'pendente'}
+                    </Badge>
                   </div>
                 </div>
               </CardHeader>
@@ -526,6 +558,21 @@ const DeliveryMyOrders = () => {
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir Nota Fiscal
                   </Button>
+
+                  {delivery.forma_pagamento === 'dinheiro'
+                    && delivery.status_pagamento !== 'confirmado'
+                    && ['saiu_entrega', 'entregue'].includes(delivery.status) && (
+                    <Button
+                      type="button"
+                      onClick={() => void handleConfirmCashPayment(delivery.id)}
+                      disabled={updatingOrder === delivery.id}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {updatingOrder === delivery.id
+                        ? 'Confirmando recebimento...'
+                        : 'Confirmar dinheiro recebido'}
+                    </Button>
+                  )}
 
                   {/* Atualizar Status - apenas para entregas em andamento */}
                   {delivery.status === 'saiu_entrega' && (

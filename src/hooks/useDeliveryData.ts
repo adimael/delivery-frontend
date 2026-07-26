@@ -15,6 +15,8 @@ export interface DeliveryOrder {
   observacoes?: string;
   observacoes_entrega?: string;
   taxa_entrega: number;
+  forma_pagamento?: string;
+  status_pagamento?: string;
   status: 'pronto' | 'saiu_entrega' | 'entregue' | 'cancelado' | 'pendente' | 'confirmado' | 'preparando';
   criado_em: string;
   pronto_em?: string;
@@ -58,6 +60,8 @@ export type ApiOrder = Partial<{
   observacoes: string;
   observacoes_entrega: string;
   taxa_entrega: number | string;
+  forma_pagamento: string;
+  status_pagamento: string;
   status: DeliveryOrder['status'];
   criado_em: string;
   pronto_em: string;
@@ -114,6 +118,8 @@ export const useAvailableDeliveries = () => {
               observacoes: delivery.observacoes,
               observacoes_entrega: delivery.observacoes_entrega,
               taxa_entrega: Number(delivery.taxa_entrega ?? 0),
+              forma_pagamento: delivery.forma_pagamento,
+              status_pagamento: delivery.status_pagamento,
               status: (delivery.status as DeliveryOrder['status']) || 'pendente',
               criado_em: String(delivery.criado_em ?? new Date().toISOString()),
               pronto_em: delivery.pronto_em,
@@ -212,6 +218,8 @@ export const useMyDeliveries = () => {
             observacoes: delivery.observacoes,
             observacoes_entrega: delivery.observacoes_entrega,
             taxa_entrega: Number(delivery.taxa_entrega ?? 0),
+            forma_pagamento: delivery.forma_pagamento,
+            status_pagamento: delivery.status_pagamento,
             status: (delivery.status as DeliveryOrder['status']) || 'pendente',
             criado_em: String(delivery.criado_em ?? new Date().toISOString()),
             pronto_em: delivery.pronto_em,

@@ -148,6 +148,7 @@ export const useProdutoOpcoes = (produtoId: string) => {
 export const usePedidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const { user } = useAuth();
   const prevSeenIdsRef = useRef<Set<string>>(new Set());
@@ -185,6 +186,18 @@ export const usePedidos = () => {
         });
 
         if (user.tipo_usuario === 'cliente') pedidosFormatted = pedidosFormatted.filter(p => p.cliente_id === user.id);
+        pedidosFormatted.sort((a, b) => {
+          const dataA = new Date(a.criado_em).getTime();
+          const dataB = new Date(b.criado_em).getTime();
+          if (Number.isFinite(dataA) && Number.isFinite(dataB) && dataA !== dataB) {
+            return dataB - dataA;
+          }
+          return String(b.numero_pedido || b.id).localeCompare(
+            String(a.numero_pedido || a.id),
+            'pt-BR',
+            { numeric: true },
+          );
+        });
 
         const currentIds = new Set<string>(pedidosFormatted.map(p => String(p.id)));
         if (firstLoadRef.current) {
@@ -246,7 +259,14 @@ export const usePedidos = () => {
   }, [fetchPedidos, user]);
 
   const markOrdersSeen = () => { prevSeenIdsRef.current = new Set(pedidos.map(p => p.id)); setNewOrdersCount(0); };
-  const refreshPedidos = () => fetchPedidos();
+  const refreshPedidos = async () => {
+    setRefreshing(true);
+    try {
+      await fetchPedidos();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const atualizarStatusPedido = async (pedidoId: string, novoStatus: string) => {
     try {
@@ -256,7 +276,15 @@ export const usePedidos = () => {
     } catch (err) { console.error('Erro ao atualizar status do pedido:', err); return false; }
   };
 
-  return { pedidos, loading, atualizarStatusPedido, newOrdersCount, markOrdersSeen, refreshPedidos };
+  return {
+    pedidos,
+    loading,
+    refreshing,
+    atualizarStatusPedido,
+    newOrdersCount,
+    markOrdersSeen,
+    refreshPedidos,
+  };
 };
 
 export const useNotificacoes = () => {

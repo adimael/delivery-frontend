@@ -286,7 +286,7 @@ const StaffOrders = () => {
                               ? 'PIX informado pelo cliente'
                               : 'Pagamento pendente'}
                         </Badge>
-                        {pedido.forma_pagamento === 'pix' && (
+                        {pedido.forma_pagamento && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -297,7 +297,9 @@ const StaffOrders = () => {
                           >
                             {pedido.status_pagamento === 'confirmado'
                               ? 'Reabrir conferência'
-                              : 'Confirmar PIX'}
+                              : pedido.forma_pagamento === 'dinheiro'
+                                ? 'Confirmar recebimento'
+                                : 'Confirmar PIX'}
                           </Button>
                         )}
                       </div>

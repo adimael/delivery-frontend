@@ -8,14 +8,22 @@ import { useNotificacoes } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
 import { useState } from "react";
-import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2 } from "lucide-react";
+import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { ativarSomNovoPedido, somNovoPedidoAtivo } from "@/lib/notificationSound";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
 const ManagerOrders = () => {
-  const { pedidos, loading, atualizarStatusPedido, newOrdersCount, markOrdersSeen, refreshPedidos } = usePedidos();
+  const {
+    pedidos,
+    loading,
+    refreshing,
+    atualizarStatusPedido,
+    newOrdersCount,
+    markOrdersSeen,
+    refreshPedidos,
+  } = usePedidos();
   const { notificacoes, marcarComoLida } = useNotificacoes();
   const { toast } = useToast();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -124,6 +132,16 @@ const ManagerOrders = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleRefresh = async () => {
+    await refreshPedidos();
+    toast({
+      title: newOrdersCount > 0 ? 'Novo pedido carregado' : 'Pedidos atualizados',
+      description: newOrdersCount > 0
+        ? `${newOrdersCount} novo(s) pedido(s) foram carregados no topo da lista.`
+        : 'A lista já está atualizada e os pedidos mais recentes estão no topo.',
+    });
   };
 
   // Função para extrair telefone dos itens do pedido
@@ -282,8 +300,9 @@ const ManagerOrders = () => {
               <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 p-3 rounded">
                 <div className="text-sm text-yellow-800">Você tem <strong>{newOrdersCount}</strong> novo(s) pedido(s).</div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => { refreshPedidos(); }}>
-                    Atualizar
+                  <Button size="sm" onClick={() => void handleRefresh()} disabled={refreshing}>
+                    {refreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {refreshing ? 'Atualizando...' : 'Atualizar'}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => {
                     // mark orders seen locally
@@ -357,7 +376,7 @@ const ManagerOrders = () => {
                               ? 'informado pelo cliente'
                             : 'pendente'}
                         </Badge>
-                        {pedido.forma_pagamento === 'pix' && (
+                        {pedido.forma_pagamento && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -370,7 +389,9 @@ const ManagerOrders = () => {
                           >
                             {pedido.status_pagamento === 'confirmado'
                               ? 'Reabrir conferência'
-                              : 'Confirmar PIX'}
+                              : pedido.forma_pagamento === 'dinheiro'
+                                ? 'Confirmar recebimento'
+                                : 'Confirmar PIX'}
                           </Button>
                         )}
                       </div>
