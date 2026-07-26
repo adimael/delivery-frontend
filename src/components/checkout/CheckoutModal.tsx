@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { MapPinOff, QrCode } from "lucide-react";
+import { ArrowLeft, ArrowRight, Banknote, MapPinOff, QrCode, ShieldCheck, WalletCards } from "lucide-react";
 import { generatePixPayload, generatePixQRCode } from "@/utils/pixUtils";
 import { useCartStore } from "@/stores/cartStore";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
@@ -923,16 +923,25 @@ export const CheckoutModal = ({
   return (
     <>
       <Dialog open={open && !showInvoice} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
+        <DialogContent className="delivery-checkout-modal">
+          <DialogHeader className="delivery-checkout-header">
+            <div className="delivery-checkout-kicker">
+              <ShieldCheck />
+              <span>Checkout seguro</span>
+            </div>
+            <DialogTitle>
               {step === 'address' && (tipoEntrega === 'entrega' ? 'Endereço de Entrega' : 'Dados para Retirada')}
               {step === 'payment' && 'Forma de Pagamento'}
               {step === 'pix' && 'Pagamento PIX'}
             </DialogTitle>
+            <div className="delivery-checkout-progress" aria-label="Progresso do pedido">
+              <span className="is-complete">1</span><i />
+              <span className={step === 'payment' || step === 'pix' ? 'is-complete' : 'is-current'}>2</span><i />
+              <span className={step === 'pix' ? 'is-complete' : ''}>3</span>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="delivery-checkout-body">
             {step === 'address' && (
               <>
                 <div className="space-y-4">
@@ -1285,12 +1294,12 @@ export const CheckoutModal = ({
                   </div>
                 </div>
                 
-                <div className="flex justify-between">
+                <div className="delivery-checkout-actions">
                   <Button variant="outline" onClick={handleBack}>
-                    Voltar
+                    <ArrowLeft /> Voltar
                   </Button>
                   <Button onClick={handleNext} className="btn-primary">
-                    Próximo
+                    Próximo <ArrowRight />
                   </Button>
                 </div>
               </>
@@ -1298,7 +1307,11 @@ export const CheckoutModal = ({
 
             {step === 'payment' && (
               <>
-                <div className="space-y-4">
+                <div className="delivery-payment">
+                  <div className="delivery-payment-intro">
+                    <span>Escolha como pagar</span>
+                    <p>Selecione uma opção para continuar com segurança.</p>
+                  </div>
                   <RadioGroup
                     value={orderData.formaPagamento}
                     onValueChange={(value: string) => {
@@ -1308,20 +1321,22 @@ export const CheckoutModal = ({
                         setTrocoParaCentavos(0);
                       }
                     }}
-                    className="grid gap-3"
+                    className="delivery-payment-options"
                   >
-                    <div className="flex min-h-14 items-center space-x-3 rounded-xl border p-4">
+                    <Label htmlFor="pix" className={`delivery-payment-option ${orderData.formaPagamento === 'pix' ? 'is-selected' : ''}`}>
+                      <span className="delivery-payment-icon"><WalletCards /></span>
+                      <span><strong>PIX</strong><small>Pagamento rápido pelo aplicativo do banco</small></span>
                       <RadioGroupItem value="pix" id="pix" />
-                      <Label htmlFor="pix" className="flex-1 cursor-pointer text-base font-semibold">PIX</Label>
-                    </div>
-                    <div className="flex min-h-14 items-center space-x-3 rounded-xl border p-4">
+                    </Label>
+                    <Label htmlFor="dinheiro" className={`delivery-payment-option ${orderData.formaPagamento === 'dinheiro' ? 'is-selected' : ''}`}>
+                      <span className="delivery-payment-icon"><Banknote /></span>
+                      <span><strong>Dinheiro</strong><small>Pague no recebimento ou na retirada</small></span>
                       <RadioGroupItem value="dinheiro" id="dinheiro" />
-                      <Label htmlFor="dinheiro" className="flex-1 cursor-pointer text-base font-semibold">Dinheiro</Label>
-                    </div>
+                    </Label>
                   </RadioGroup>
 
                   {orderData.formaPagamento === 'dinheiro' && (
-                    <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+                    <div className="delivery-change-card">
                       <div>
                         <p className="font-semibold">Precisa de troco?</p>
                         <p className="text-sm text-muted-foreground">
@@ -1371,7 +1386,7 @@ export const CheckoutModal = ({
                     </div>
                   )}
 
-                  <div className="space-y-2 rounded-xl border p-3">
+                  <div className="delivery-checkout-coupon">
                     <Label htmlFor="cupom">Cupom de desconto</Label>
                     <div className="flex gap-2">
                       <Input
@@ -1407,8 +1422,8 @@ export const CheckoutModal = ({
                     </p>
                   )}
                   
-                  <div className="border-t pt-4">
-                    <div className="space-y-2 text-sm">
+                  <div className="delivery-checkout-summary">
+                    <div>
                       <div className="flex justify-between">
                         <span>Subtotal:</span>
                         <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculatedValues.subtotal)}</span>
@@ -1443,12 +1458,12 @@ export const CheckoutModal = ({
                   </div>
                 </div>
                 
-                <div className="flex justify-between">
+                <div className="delivery-checkout-actions">
                   <Button variant="outline" onClick={handleBack}>
-                    Voltar
+                    <ArrowLeft /> Voltar
                   </Button>
                   <Button onClick={handleNext} className="btn-primary">
-                    {orderData.formaPagamento === 'pix' ? 'Pagar com PIX' : 'Finalizar Pedido'}
+                    {orderData.formaPagamento === 'pix' ? 'Pagar com PIX' : 'Finalizar Pedido'} <ArrowRight />
                   </Button>
                 </div>
               </>
