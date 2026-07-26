@@ -21,6 +21,7 @@ export interface Pedido {
   numero_pedido: string;
   cliente_id?: string;
   nome_cliente?: string;
+  telefone_cliente?: string;
   valor_total: number;
   taxa_entrega: number;
   desconto?: number;

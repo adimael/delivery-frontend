@@ -139,7 +139,11 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
                     {invoiceData.numero && !invoiceData.endereco.trim().endsWith(',') ? `, ${invoiceData.numero}` : ` ${invoiceData.numero || ''}`}
                     {invoiceData.complemento ? `, ${invoiceData.complemento}` : ''}
                   </p>
-                  <p className="text-sm">{invoiceData.bairro}, {invoiceData.cidade}</p>
+                  {(invoiceData.bairro || invoiceData.cidade) && (
+                    <p className="text-sm">
+                      {[invoiceData.bairro, invoiceData.cidade].filter(Boolean).join(', ')}
+                    </p>
+                  )}
                   {!fullAddressForCEPCheck.includes('cep') && invoiceData.cep && (
                     <p className="text-sm">CEP: {invoiceData.cep}</p>
                   )}
@@ -188,13 +192,27 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
                         {Object.entries(
                           selecoesPorCategoria(item.customizations.selections),
                         ).map(([categoria, opcoes]) => (
-                          <div key={categoria}>
-                            <strong>{categoria}:</strong>{' '}
-                            {opcoes.map((opcao) =>
-                              `${Number(opcao.quantidade || 1)}x ${
-                                opcao.nome || opcao.name || 'Opção'
-                              }`,
-                            ).join(', ')}
+                          <div key={categoria} className="mt-1">
+                            <strong className="block">{categoria}:</strong>
+                            {opcoes.map((opcao, optionIndex) => (
+                              <div key={`${categoria}-${optionIndex}`} className="flex justify-between gap-2">
+                                <span>
+                                  {Number(opcao.quantidade || 1)}x{' '}
+                                  {opcao.nome || opcao.name || 'Opção'}
+                                </span>
+                                {Number(opcao.preco_adicional || 0) > 0 && (
+                                  <span>
+                                    +{new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(
+                                      Number(opcao.preco_adicional)
+                                        * Number(opcao.quantidade || 1),
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         ))}
                         {item.customizations.notes && (
@@ -205,7 +223,18 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
                   </div>
                   <div className="col-span-2 text-center">{item.quantity}</div>
                   <div className="col-span-2 text-right">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
+                    <div>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}</div>
+                    {Number(item.totalPrice || 0) - Number(item.price || 0) * Number(item.quantity || 0) > 0 && (
+                      <small className="text-green-700">
+                        +{new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(
+                          Number(item.totalPrice)
+                            - Number(item.price) * Number(item.quantity),
+                        )} adicionais
+                      </small>
+                    )}
                   </div>
                   <div className="col-span-2 text-right">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.totalPrice || (item.price * item.quantity))}

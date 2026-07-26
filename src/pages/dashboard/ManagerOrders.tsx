@@ -156,20 +156,9 @@ const ManagerOrders = () => {
 
   const handleViewInvoice = (pedido: any) => {
     // Transformar dados do pedido para o formato da nota fiscal
-    const enderecoCompleto = pedido.endereco_entrega.split(', ');
-    
-    let telefoneCliente = '';
-    if (pedido.tipo_cliente === 'convidado') {
-      try {
-        const primeiroItem = pedido.itens_pedido[0];
-        if (primeiroItem?.observacoes) {
-          const parsed = JSON.parse(primeiroItem.observacoes);
-          telefoneCliente = parsed.telefone_cliente || '';
-        }
-      } catch (e) {
-        // Se não conseguir extrair o telefone, deixa vazio
-      }
-    }
+    const telefoneCliente = pedido.telefone_cliente
+      || pedido.perfis?.telefone
+      || '';
     
     const items = pedido.itens_pedido.map((item: any) => {
       let customizations: any = {
@@ -216,19 +205,15 @@ const ManagerOrders = () => {
       numeroOrdem: pedido.numero_pedido,
       nomeDestinatario: pedido.nome_cliente,
       telefone: telefoneCliente,
-      endereco: isLocalPickup ? 'Retirada no Local' : (enderecoCompleto[0] || pedido.endereco_entrega),
-      numero: enderecoCompleto[1] || '',
-      complemento: enderecoCompleto[2] || '',
-      bairro: enderecoCompleto[3] || '',
-      cidade: enderecoCompleto[4] || '',
-      cep: enderecoCompleto[5] || '',
+      endereco: isLocalPickup ? 'Retirada no Local' : pedido.endereco_entrega,
       observacoes: pedido.observacoes,
       items,
       subtotal,
       taxaEntrega,
-      total,
+      desconto: Number(pedido.desconto || 0),
+      total: Number(pedido.valor_total || total),
       dataHora: pedido.criado_em,
-      formaPagamento: 'pix'
+      formaPagamento: pedido.forma_pagamento || 'Não informado'
     };
     
     setSelectedInvoice(invoiceData);

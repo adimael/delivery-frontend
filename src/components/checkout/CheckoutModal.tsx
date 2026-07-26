@@ -841,7 +841,7 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
         nomeDestinatario: createdOrder.nome_cliente,
         telefone: orderData.telefone,
         endereco: enderecoCompleto,
-        observacoes: orderData.observacoes,
+        observacoes: createdOrder.observacoes ?? orderData.observacoes,
         items: items.map(item => ({
           name: item.name,
           price: item.price,
@@ -1288,12 +1288,12 @@ export const CheckoutModal = ({ open, onClose, onFinishOrder }: CheckoutModalPro
 
                   {/* Observações section - always show */}
                   <div className="space-y-2">
-                    <Label htmlFor="observacoes">Observações</Label>
+                    <Label htmlFor="observacoes">Observações gerais do pedido ou da entrega</Label>
                     <Textarea 
                       id="observacoes" 
                       value={orderData.observacoes} 
                       onChange={(e) => setOrderData({...orderData, observacoes: e.target.value})}
-                      placeholder="Alguma observação sobre o pedido ou entrega?"
+                      placeholder="Ex.: interfone quebrado, chamar no portão..."
                     />
                   </div>
                 </div>

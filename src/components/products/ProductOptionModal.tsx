@@ -306,7 +306,7 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
             </section>
           ))}
 
-          <section><Label htmlFor="notes" className="text-lg font-black">Observações</Label><Textarea id="notes" maxLength={180} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: sem cebola, molho separado..." className="mt-2 min-h-28 text-base" /><p className="mt-1 text-right text-sm text-gray-500">{notes.length}/180</p></section>
+          <section><Label htmlFor="notes" className="text-lg font-black">Observação deste produto</Label><Textarea id="notes" maxLength={180} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: sem cebola, molho separado..." className="mt-2 min-h-28 text-base" /><p className="mt-1 text-right text-sm text-gray-500">Esta observação ficará vinculada somente a este item. {notes.length}/180</p></section>
           <section><h3 className="mb-3 text-lg font-black">Quantidade do produto</h3><div className="delivery-portion-control"><Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</Button><output>{quantity}</output><Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>+</Button></div></section>
         </div>
 
