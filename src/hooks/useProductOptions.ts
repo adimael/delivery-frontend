@@ -3,6 +3,7 @@ import { apiRequest } from '@/lib/api';
 
 export interface CategoriaOpcao {
   id: string;
+  produto_uuid?: string;
   nome: string;
   descricao?: string;
   minimo: number;
@@ -87,14 +88,26 @@ const normalizarVinculo = (item: any): ProdutoOpcaoCompleta => ({
   opcao_ordem: numero(item.opcao_ordem),
 });
 
-export const useProductOptions = ({ loadAdminData = true }: { loadAdminData?: boolean } = {}) => {
+export const useProductOptions = ({
+  loadAdminData = true,
+  productId,
+}: {
+  loadAdminData?: boolean;
+  productId?: string;
+} = {}) => {
   const [categorias, setCategorias] = useState<CategoriaOpcao[]>([]);
   const [opcoes, setOpcoes] = useState<OpcaoProduto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchCategorias = async () => {
     try {
-      const data = await apiRequest('/admin/opcoes/categorias');
+      if (!productId) {
+        setCategorias([]);
+        return;
+      }
+      const data = await apiRequest(
+        `/admin/opcoes/categorias?produto_uuid=${encodeURIComponent(productId)}`,
+      );
       setCategorias(Array.isArray(data) ? data.map(normalizarCategoria) : []);
     } catch {
       setCategorias([]);
@@ -103,7 +116,13 @@ export const useProductOptions = ({ loadAdminData = true }: { loadAdminData?: bo
 
   const fetchOpcoes = async () => {
     try {
-      const categoriasComOpcoes = await apiRequest('/admin/opcoes/categorias');
+      if (!productId) {
+        setOpcoes([]);
+        return;
+      }
+      const categoriasComOpcoes = await apiRequest(
+        `/admin/opcoes/categorias?produto_uuid=${encodeURIComponent(productId)}`,
+      );
       setOpcoes((Array.isArray(categoriasComOpcoes) ? categoriasComOpcoes : [])
         .flatMap((categoria: any) =>
           (categoria.opcoes ?? []).map((opcao: any) =>
@@ -127,7 +146,7 @@ export const useProductOptions = ({ loadAdminData = true }: { loadAdminData?: bo
       return;
     }
     setLoading(false);
-  }, [loadAdminData]);
+  }, [loadAdminData, productId]);
 
   const getOpcoesParaProduto = async (produtoId: string): Promise<ProdutoOpcaoCompleta[]> => {
     const data = await apiRequest(`/produtos/${produtoId}/opcoes`);
@@ -135,8 +154,11 @@ export const useProductOptions = ({ loadAdminData = true }: { loadAdminData?: bo
   };
 
   const criarCategoria = async (categoria: Omit<CategoriaOpcao, 'id' | 'criado_em'>) => {
+    if (!productId) {
+      throw new Error('Produto não identificado.');
+    }
     const data = await apiRequest('/admin/opcoes/categorias', {
-      method: 'POST', body: JSON.stringify(categoria)
+      method: 'POST', body: JSON.stringify({ ...categoria, produto_uuid: productId })
     });
     const normalizada = normalizarCategoria(data);
     setCategorias(prev => [...prev, normalizada]);

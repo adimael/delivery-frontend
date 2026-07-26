@@ -327,5 +327,45 @@ export const useNotificacoes = () => {
     }
   };
 
-  return { notificacoes, loading, marcarComoLida };
+  const marcarTodasComoLidas = async () => {
+    try {
+      await apiRequest('/notificacoes/lidas', {
+        method: 'PATCH',
+        body: '{}',
+      });
+      setNotificacoes((atuais) => atuais.map((item) => ({ ...item, lida: true })));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const excluirNotificacao = async (notificacaoId: string) => {
+    try {
+      await apiRequest(`/notificacoes/${notificacaoId}`, { method: 'DELETE' });
+      setNotificacoes((atuais) => atuais.filter((item) => item.id !== notificacaoId));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const limparNotificacoes = async () => {
+    try {
+      await apiRequest('/notificacoes', { method: 'DELETE' });
+      setNotificacoes([]);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  return {
+    notificacoes,
+    loading,
+    marcarComoLida,
+    marcarTodasComoLidas,
+    excluirNotificacao,
+    limparNotificacoes,
+  };
 };

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Menu, MessageCircle, User } from "lucide-react";
+import { Bell, CheckCheck, Menu, MessageCircle, Trash2, User, X } from "lucide-react";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
 import { useNotificacoes } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { confirmAction } from "@/components/ui/confirmation-host";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -44,7 +45,13 @@ export const DashboardLayout = ({
   const [collapsed, setCollapsedState] = useState(
     () => localStorage.getItem("deliveryDashboardSidebar") === "collapsed",
   );
-  const { notificacoes, marcarComoLida } = useNotificacoes();
+  const {
+    notificacoes,
+    marcarComoLida,
+    marcarTodasComoLidas,
+    excluirNotificacao,
+    limparNotificacoes,
+  } = useNotificacoes();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -83,6 +90,23 @@ export const DashboardLayout = ({
         variant: "destructive",
       });
     }
+  };
+
+  const handleClearNotifications = async () => {
+    if (!(await confirmAction({
+      title: 'Limpar todas as notificações?',
+      description: 'Essa ação remove todo o histórico de notificações da sua conta.',
+      confirmLabel: 'Limpar notificações',
+    }))) return;
+
+    const removidas = await limparNotificacoes();
+    toast({
+      title: removidas ? 'Notificações removidas' : 'Não foi possível limpar',
+      description: removidas
+        ? 'O histórico de notificações foi limpo.'
+        : 'Tente novamente.',
+      variant: removidas ? 'default' : 'destructive',
+    });
   };
 
   return (
@@ -149,6 +173,36 @@ export const DashboardLayout = ({
                   <strong>Notificações</strong>
                   <span>{naoLidas} não lidas</span>
                 </div>
+                {notificacoes.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 px-2 py-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={naoLidas === 0}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void marcarTodasComoLidas();
+                      }}
+                    >
+                      <CheckCheck className="mr-2 h-4 w-4" />
+                      Marcar todas
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void handleClearNotifications();
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Limpar
+                    </Button>
+                  </div>
+                )}
                 <DropdownMenuSeparator />
                 {notificacoes.length === 0 ? (
                   <p className="dashboard-dropdown-empty">Nenhuma notificação.</p>
@@ -158,8 +212,22 @@ export const DashboardLayout = ({
                     className="dashboard-notification-item"
                     onClick={() => marcarComoLida(notificacao.id)}
                   >
-                    <strong>{notificacao.titulo}</strong>
-                    <span>{notificacao.mensagem}</span>
+                    <div className="min-w-0 flex-1">
+                      <strong>{notificacao.titulo}</strong>
+                      <span>{notificacao.mensagem}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-lg hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={`Excluir notificação ${notificacao.titulo}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void excluirNotificacao(notificacao.id);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

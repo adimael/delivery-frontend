@@ -52,7 +52,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
     reordenarOpcoes,
     reordenarCategoriasVinculadas,
     refetch
-  } = useProductOptions();
+  } = useProductOptions({ productId: produtoId });
 
   const [produtoOpcoes, setProdutoOpcoes] = useState<any[]>([]);
   const [editingCategoria, setEditingCategoria] = useState<CategoriaOpcao | null>(null);
@@ -170,6 +170,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
       }
       resetCategoriaForm();
       await refetch();
+      await loadProdutoOpcoes();
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -207,6 +208,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
       }
       resetOpcaoForm();
       await refetch();
+      await loadProdutoOpcoes();
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -484,10 +486,9 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full product-options-tabs">
           <div className="options-toolbar">
-            <TabsList className="modal-tabs grid w-full grid-cols-3">
+            <TabsList className="modal-tabs grid w-full grid-cols-2">
               <TabsTrigger value="categorias">1. Categorias</TabsTrigger>
               <TabsTrigger value="opcoes" disabled={categorias.length === 0}>2. Adicionais</TabsTrigger>
-              <TabsTrigger value="produto" disabled={categorias.length === 0}>3. No produto</TabsTrigger>
             </TabsList>
             {(activeTab === "categorias" || activeTab === "opcoes") && (
               <Button onClick={() => {
