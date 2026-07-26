@@ -567,7 +567,6 @@ export const CheckoutModal = ({
         && !usandoEnderecoSalvo
         && (
           !orderData.nomeDestinatario
-          || !orderData.telefone
           || !orderData.endereco
           || !orderData.numero
           || !orderData.bairro
@@ -969,7 +968,7 @@ export const CheckoutModal = ({
                                     />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label htmlFor="telefone">Telefone *</Label>
+                                    <Label htmlFor="telefone">Telefone (opcional)</Label>
                                     <Input 
                                       id="telefone" 
                                       value={orderData.telefone} 
@@ -1110,7 +1109,7 @@ export const CheckoutModal = ({
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="telefone">Telefone *</Label>
+                              <Label htmlFor="telefone">Telefone (opcional)</Label>
                               <Input 
                                 id="telefone" 
                                 value={orderData.telefone} 
