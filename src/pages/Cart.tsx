@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, ReceiptText, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
+import { ArrowLeft, Minus, Plus, ReceiptText, ShoppingBag, Tag, Trash2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,12 +33,6 @@ const Cart = () => {
     () => items.reduce((total, item) => total + toNumber(item.totalPrice ?? item.price * item.quantity), 0),
     [items],
   );
-  const freeShippingMinimum = toNumber(configuracao?.valor_minimo_frete_gratis);
-  const deliveryFee = toNumber(configuracao?.taxa_entrega);
-  const shipping = !configuracao || (freeShippingMinimum > 0 && subtotal >= freeShippingMinimum) ? 0 : deliveryFee;
-  const total = subtotal + shipping;
-  const remainingForFreeShipping = Math.max(0, freeShippingMinimum - subtotal);
-
   const handleRemoveItem = (itemId: string) => {
     removeItem(itemId);
     toast({ title: "Item removido", description: "O carrinho foi atualizado." });
@@ -123,20 +117,14 @@ const Cart = () => {
 
             <aside className="delivery-cart-summary">
               <header><ReceiptText /><div><h2>Resumo do pedido</h2><p>Confira antes de continuar</p></div></header>
-              {freeShippingMinimum > 0 && (
-                <div className={`delivery-shipping-progress ${remainingForFreeShipping === 0 ? "is-complete" : ""}`}>
-                  <div><Truck /><span>{remainingForFreeShipping === 0 ? "Você ganhou frete grátis!" : `Faltam ${money(remainingForFreeShipping)} para frete grátis`}</span></div>
-                  <progress max={freeShippingMinimum} value={Math.min(subtotal, freeShippingMinimum)} />
-                </div>
-              )}
               <div className="delivery-cart-coupon">
                 <label htmlFor="coupon"><Tag /> Tem um cupom?</label>
                 <div><Input id="coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Digite o código" /><Button variant="outline" onClick={handleApplyCoupon} disabled={!couponCode.trim()}>Aplicar</Button></div>
               </div>
               <dl>
                 <div><dt>Subtotal</dt><dd>{money(subtotal)}</dd></div>
-                <div><dt>Entrega</dt><dd className={shipping === 0 ? "is-free" : ""}>{loading ? "Calculando" : shipping === 0 ? "Grátis" : money(shipping)}</dd></div>
-                <div className="delivery-cart-total"><dt>Total</dt><dd>{loading ? "—" : money(total)}</dd></div>
+                <div><dt>Taxa de entrega</dt><dd className="is-free">Somente se escolher entrega</dd></div>
+                <div className="delivery-cart-total"><dt>Subtotal atual</dt><dd>{loading ? "—" : money(subtotal)}</dd></div>
               </dl>
               <Button className="delivery-cart-checkout btn-primary" onClick={handleCheckout} disabled={loading || !estaAberto}>
                 {loading ? "Preparando pedido..." : estaAberto ? "Continuar para entrega e pagamento" : "Fechado no momento"}
