@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { ativarSomNovoPedido, somNovoPedidoAtivo } from "@/lib/notificationSound";
+import { ativarNotificacoesPedido } from "@/lib/orderNotifications";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
@@ -41,13 +42,7 @@ const ManagerOrders = () => {
       const audioAtivado = await ativarSomNovoPedido();
       setSomAtivo(audioAtivado);
 
-      let notificacaoAtivada = false;
-      if (typeof Notification !== 'undefined' && window.isSecureContext) {
-        const permissao = Notification.permission === 'default'
-          ? await Notification.requestPermission()
-          : Notification.permission;
-        notificacaoAtivada = permissao === 'granted';
-      }
+      const notificacaoAtivada = await ativarNotificacoesPedido();
       setNotificacoesAtivas(audioAtivado && notificacaoAtivada);
 
       if (!audioAtivado) {

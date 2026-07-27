@@ -15,18 +15,33 @@ const reproduzirAviso = (): boolean => {
     if (audioContext.state !== 'running') return false;
 
     const agora = audioContext.currentTime;
-    [0, 0.18].forEach((atraso, indice) => {
-      const oscilador = audioContext!.createOscillator();
-      const volume = audioContext!.createGain();
-      oscilador.type = 'sine';
-      oscilador.frequency.value = indice === 0 ? 740 : 940;
-      volume.gain.setValueAtTime(0.0001, agora + atraso);
-      volume.gain.exponentialRampToValueAtTime(0.22, agora + atraso + 0.02);
-      volume.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.16);
-      oscilador.connect(volume);
-      volume.connect(audioContext!.destination);
-      oscilador.start(agora + atraso);
-      oscilador.stop(agora + atraso + 0.18);
+    const compressor = audioContext.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 8;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.18;
+    compressor.connect(audioContext.destination);
+
+    [0, 1.05, 2.1].forEach((repeticao) => {
+      [
+        { atraso: 0, frequencia: 660, duracao: 0.24 },
+        { atraso: 0.24, frequencia: 880, duracao: 0.26 },
+        { atraso: 0.52, frequencia: 1100, duracao: 0.34 },
+      ].forEach(({ atraso, frequencia, duracao }, indice) => {
+        const inicio = agora + repeticao + atraso;
+        const oscilador = audioContext!.createOscillator();
+        const volume = audioContext!.createGain();
+        oscilador.type = indice === 2 ? 'square' : 'triangle';
+        oscilador.frequency.setValueAtTime(frequencia, inicio);
+        volume.gain.setValueAtTime(0.0001, inicio);
+        volume.gain.exponentialRampToValueAtTime(indice === 2 ? 0.42 : 0.34, inicio + 0.025);
+        volume.gain.exponentialRampToValueAtTime(0.0001, inicio + duracao);
+        oscilador.connect(volume);
+        volume.connect(compressor);
+        oscilador.start(inicio);
+        oscilador.stop(inicio + duracao + 0.02);
+      });
     });
     return true;
   } catch {

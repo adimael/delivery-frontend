@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/api';
 import { startSmartPolling } from '@/lib/smartPolling';
 import { tocarSomNovoPedido } from '@/lib/notificationSound';
+import { notificarNovoPedido } from '@/lib/orderNotifications';
 
 export interface Produto {
   id: string;
@@ -214,11 +215,11 @@ export const usePedidos = () => {
             && ['gerente', 'funcionario'].includes(user.tipo_usuario)
           ) {
             tocarSomNovoPedido();
-            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-              new Notification('Novo pedido recebido', {
-                body: `${newlyNotified.length} novo(s) pedido(s) aguardando atendimento.`,
-              });
-            }
+            const pedidoNovo = pedidosFormatted.find(p => p.id === newlyNotified[0]);
+            void notificarNovoPedido(
+              newlyNotified.length,
+              newlyNotified.length === 1 ? pedidoNovo?.numero_pedido : undefined,
+            );
           }
           newlyNotified.forEach(id => {
             const pedidoObj = pedidosFormatted.find(p => p.id === id);
