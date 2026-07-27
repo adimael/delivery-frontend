@@ -137,7 +137,6 @@ const updateMetaTags = (config: ConfiguracaoEstabelecimento): void => {
 
   const faviconAtual = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (!config.url_icone_plataforma) {
-    faviconAtual?.remove();
     return;
   }
 
