@@ -2,6 +2,7 @@ const SOUND_ENABLED_KEY = 'delivery-order-sound-enabled';
 const SAMPLE_RATE = 22_050;
 const DURATION_SECONDS = 3.25;
 let alertAudio: HTMLAudioElement | null = null;
+let ultimaReproducaoEm = 0;
 
 export const somNovoPedidoAtivo = (): boolean => {
   try {
@@ -105,6 +106,9 @@ export const prepararSomNovoPedido = async (): Promise<boolean> => {
 
 export const tocarSomNovoPedido = (): void => {
   if (!somNovoPedidoAtivo()) return;
+  const agora = Date.now();
+  if (agora - ultimaReproducaoEm < 2_000) return;
+  ultimaReproducaoEm = agora;
   void reproduzir();
 };
 

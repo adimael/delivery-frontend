@@ -339,6 +339,7 @@ export const usePedidosPaginados = (
   const cursorRef = useRef<string | null>(null);
   const loadingMoreRef = useRef(false);
   const loadedOnceRef = useRef(false);
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
 
   const carregar = useCallback(async (reiniciar: boolean) => {
     if (!user || (!reiniciar && (!cursorRef.current || loadingMoreRef.current))) return;
@@ -362,12 +363,30 @@ export const usePedidosPaginados = (
       const pagina = Array.isArray(resposta?.pedidos)
         ? resposta.pedidos.map(normalizarPedido)
         : [];
+      const idsDaPagina = pagina.map((pedido) => String(pedido.id));
+      if (reiniciar && loadedOnceRef.current && escopo === 'hoje') {
+        const novosIds = idsDaPagina.filter((id) => (
+          !knownOrderIdsRef.current.has(id) && !notifiedOrderIds.has(id)
+        ));
+        if (
+          novosIds.length > 0
+          && ['gerente', 'funcionario'].includes(user.tipo_usuario)
+        ) {
+          tocarSomNovoPedido();
+        }
+        novosIds.forEach((id) => notifiedOrderIds.add(id));
+      }
       setPedidos((atuais) => {
         const combinados = reiniciar ? pagina : [...atuais, ...pagina];
         return ordenarPedidosRecentes(Array.from(
           new Map(combinados.map((pedido) => [pedido.id, pedido])).values(),
         ));
       });
+      knownOrderIdsRef.current = new Set(
+        reiniciar
+          ? idsDaPagina
+          : [...knownOrderIdsRef.current, ...idsDaPagina],
+      );
       cursorRef.current = typeof resposta?.proximo_cursor === 'string'
         ? resposta.proximo_cursor
         : null;
@@ -394,6 +413,7 @@ export const usePedidosPaginados = (
     setPedidos([]);
     cursorRef.current = null;
     loadedOnceRef.current = false;
+    knownOrderIdsRef.current = new Set();
     setHasMore(false);
     void carregar(true);
   // A alteração do cursor não deve reiniciar a página.
@@ -446,16 +466,30 @@ export const useNotificacoes = () => {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const knownNotificationIdsRef = useRef<Set<string>>(new Set());
+  const notificationsLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     const fetchNotificacoes = async () => {
       try {
         const data = await apiRequest('/notificacoes');
-        setNotificacoes(Array.isArray(data) ? data.map((item) => ({
+        const recebidas = Array.isArray(data) ? data.map((item) => ({
           ...item,
           id: String(item.id ?? item.uuid),
-        })) : []);
+        })) : [];
+        const idsAtuais = new Set<string>(
+          recebidas.map((item) => String(item.id)),
+        );
+        if (
+          notificationsLoadedRef.current
+          && recebidas.some((item) => !knownNotificationIdsRef.current.has(String(item.id)))
+        ) {
+          tocarSomNovoPedido();
+        }
+        knownNotificationIdsRef.current = idsAtuais;
+        notificationsLoadedRef.current = true;
+        setNotificacoes(recebidas);
       } finally {
         setLoading(false);
       }
