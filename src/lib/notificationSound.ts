@@ -89,6 +89,20 @@ export const ativarSomNovoPedido = async (): Promise<boolean> => {
   return ativo;
 };
 
+export const prepararSomNovoPedido = async (): Promise<boolean> => {
+  try {
+    const audio = obterAudio();
+    audio.volume = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = 1;
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const tocarSomNovoPedido = (): void => {
   if (!somNovoPedidoAtivo()) return;
   void reproduzir();

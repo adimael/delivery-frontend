@@ -14,6 +14,7 @@ import {
   alarmeNovoPedidoPreparado,
   ativarSomNovoPedido,
   removerNotificacoesSistemaAntigas,
+  somNovoPedidoAtivo,
 } from "@/lib/notificationSound";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
@@ -32,7 +33,9 @@ const ManagerOrders = () => {
   const { toast } = useToast();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [somAtivo, setSomAtivo] = useState(() => alarmeNovoPedidoPreparado());
+  const [somAtivo, setSomAtivo] = useState(
+    () => alarmeNovoPedidoPreparado() || somNovoPedidoAtivo(),
+  );
   const [ativandoAvisos, setAtivandoAvisos] = useState(false);
 
   useEffect(() => {

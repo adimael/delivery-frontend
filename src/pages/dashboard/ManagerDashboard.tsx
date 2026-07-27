@@ -12,16 +12,31 @@ import {
   Loader2,
   Power,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { useToast } from "@/hooks/use-toast";
+import { usePedidos } from "@/hooks/useSupabaseData";
+import { useProdutos } from "@/hooks/useProdutos";
+import { apiRequest } from "@/lib/api";
+
+const chaveDataBahia = (data: Date): string => (
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bahia',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(data)
+);
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
   const { configuracao, estaAberto, loading, atualizarConfiguracao } = useEstabelecimento();
   const { toast } = useToast();
   const [alterandoStatus, setAlterandoStatus] = useState(false);
+  const { pedidos } = usePedidos();
+  const { produtos } = useProdutos(true);
+  const [equipeAtiva, setEquipeAtiva] = useState(0);
   const recebimentoAtivado = configuracao?.aberto === true
     || configuracao?.aberto === 1
     || ['1', 'true', 'sim'].includes(String(configuracao?.aberto ?? '').toLowerCase());
@@ -48,6 +63,55 @@ const ManagerDashboard = () => {
       setAlterandoStatus(false);
     }
   };
+
+  useEffect(() => {
+    let ativo = true;
+    void apiRequest('/perfis').then((perfis) => {
+      if (!ativo || !Array.isArray(perfis)) return;
+      setEquipeAtiva(perfis.filter((perfil) => (
+        ['gerente', 'funcionario', 'entregador'].includes(String(perfil.tipo_usuario || ''))
+        && ![false, 0, '0', 'false'].includes(perfil.ativo)
+      )).length);
+    }).catch(() => {
+      if (ativo) setEquipeAtiva(0);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const estatisticas = useMemo(() => {
+    const hoje = chaveDataBahia(new Date());
+    const ontemData = new Date();
+    ontemData.setDate(ontemData.getDate() - 1);
+    const ontem = chaveDataBahia(ontemData);
+    const validos = pedidos.filter(pedido => pedido.status !== 'cancelado');
+    const pedidosHoje = validos.filter(
+      pedido => chaveDataBahia(new Date(pedido.criado_em)) === hoje,
+    );
+    const pedidosOntem = validos.filter(
+      pedido => chaveDataBahia(new Date(pedido.criado_em)) === ontem,
+    );
+    const receitaHoje = pedidosHoje.reduce(
+      (total, pedido) => total + Number(pedido.valor_total || 0),
+      0,
+    );
+    const receitaOntem = pedidosOntem.reduce(
+      (total, pedido) => total + Number(pedido.valor_total || 0),
+      0,
+    );
+    const variacao = receitaOntem > 0
+      ? ((receitaHoje - receitaOntem) / receitaOntem) * 100
+      : receitaHoje > 0 ? 100 : 0;
+
+    return {
+      pedidosHoje: pedidosHoje.length,
+      pendentes: pedidosHoje.filter(pedido => pedido.status === 'pendente').length,
+      receitaHoje,
+      variacao,
+      produtosAtivos: produtos.filter(produto => produto.disponivel).length,
+    };
+  }, [pedidos, produtos]);
 
   // Formatar horário
   const horaAbertura = configuracao?.hora_abertura?.slice(0,5) || "08:00";
@@ -130,9 +194,9 @@ const ManagerDashboard = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{estatisticas.pedidosHoje}</div>
               <p className="text-xs text-muted-foreground">
-                0 pendentes
+                {estatisticas.pendentes} pendente(s)
               </p>
             </CardContent>
           </Card>
@@ -146,10 +210,14 @@ const ManagerDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                R$ 0,00
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(estatisticas.receitaHoje)}
               </div>
               <p className="text-xs text-muted-foreground">
-                +0% em relação a ontem
+                {estatisticas.variacao >= 0 ? '+' : ''}
+                {estatisticas.variacao.toFixed(1)}% em relação a ontem
               </p>
             </CardContent>
           </Card>
@@ -162,7 +230,7 @@ const ManagerDashboard = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{estatisticas.produtosAtivos}</div>
               <p className="text-xs text-muted-foreground">
                 Total de produtos
               </p>
@@ -177,7 +245,7 @@ const ManagerDashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{equipeAtiva}</div>
               <p className="text-xs text-muted-foreground">
                 Funcionários e entregadores
               </p>

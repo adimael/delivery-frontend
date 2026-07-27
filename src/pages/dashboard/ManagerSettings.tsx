@@ -283,51 +283,6 @@ const ManagerSettings = () => {
     }));
   };
 
-  // Function to check if a day schedule matches the default values
-  const isDefaultSchedule = (dayKey: string) => {
-    const defaultValues = {
-      aberto: dayKey === 'domingo' ? false : true,
-      hora_abertura: dayKey === 'sabado' ? '08:00' : (dayKey === 'domingo' ? '00:00' : '08:00'),
-      hora_fechamento: dayKey === 'sabado' ? '12:00' : (dayKey === 'domingo' ? '00:00' : '18:00')
-    };
-    
-    return (
-      formData[`aberto_${dayKey}`] === defaultValues.aberto &&
-      formData[`hora_abertura_${dayKey}`] === defaultValues.hora_abertura &&
-      formData[`hora_fechamento_${dayKey}`] === defaultValues.hora_fechamento
-    );
-  };
-
-  // Function to update general schedule and sync with individual day schedules that use default values
-  const handleGeneralScheduleChange = (field: string, value: any) => {
-    setFormData(prev => {
-      const updatedData = { ...prev, [field]: value };
-      
-      // If changing general opening or closing time, update individual days that still use defaults
-      if (field === 'hora_abertura' || field === 'hora_fechamento') {
-        const days = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'];
-        
-        days.forEach(day => {
-          // Only update if the day still uses default values
-          if (isDefaultSchedule(day)) {
-            if (day === 'sabado' && field === 'hora_fechamento') {
-              // Saturday has a different default closing time, so don't update it
-              return;
-            }
-            if (day === 'domingo') {
-              // Sunday is closed by default, so don't update times
-              return;
-            }
-            
-            updatedData[`hora_${field === 'hora_abertura' ? 'abertura' : 'fechamento'}_${day}`] = value;
-          }
-        });
-      }
-      
-      return updatedData;
-    });
-  };
-
   const preencherEstabelecimentoPeloCep = async (valor: string) => {
     const cep = formatarCep(valor);
     setFormData(prev => ({ ...prev, cep_estabelecimento: cep }));
@@ -811,34 +766,6 @@ const ManagerSettings = () => {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="mt-3">
-                        <Label htmlFor={`area-localidades-${indice}`}>
-                          Bairros/localidades atendidos
-                        </Label>
-                        <Textarea
-                          id={`area-localidades-${indice}`}
-                          rows={4}
-                          value={(area.localidades || []).join('\n')}
-                          placeholder={"Centro\nBairro Novo\nZona Rural próxima"}
-                          onChange={(event) => setFormData(prev => ({
-                            ...prev,
-                            areas_entrega: (prev.areas_entrega || []).map((item, atual) =>
-                              atual === indice
-                                ? {
-                                    ...item,
-                                    localidades: event.target.value
-                                      .split(/\r?\n|,/)
-                                      .map(valor => valor.trim())
-                                      .filter(Boolean),
-                                  }
-                                : item,
-                            ),
-                          }))}
-                        />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Uma localidade por linha. Deixe vazio para atender toda a cidade.
-                        </p>
-                      </div>
                     </div>
                   ))}
 
@@ -1029,27 +956,6 @@ const ManagerSettings = () => {
                 className="ml-2"
               />
               <span className="ml-2 font-medium">{formData.aberto ? "Aberto" : "Fechado"}</span>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label htmlFor="hora_abertura">Horário de Abertura (Geral)</Label>
-                <Input
-                  id="hora_abertura"
-                  type="time"
-                  value={formData.hora_abertura}
-                  onChange={e => handleGeneralScheduleChange('hora_abertura', e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="hora_fechamento">Horário de Fechamento (Geral)</Label>
-                <Input
-                  id="hora_fechamento"
-                  type="time"
-                  value={formData.hora_fechamento}
-                  onChange={e => handleGeneralScheduleChange('hora_fechamento', e.target.value)}
-                />
-              </div>
             </div>
             
             <div className="rounded-3xl border bg-muted/20 p-4 sm:p-6">

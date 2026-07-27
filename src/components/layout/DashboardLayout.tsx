@@ -15,6 +15,11 @@ import { useNotificacoes } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { confirmAction } from "@/components/ui/confirmation-host";
+import {
+  alarmeNovoPedidoPreparado,
+  prepararSomNovoPedido,
+  somNovoPedidoAtivo,
+} from "@/lib/notificationSound";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -78,6 +83,21 @@ export const DashboardLayout = ({
       document.removeEventListener("keydown", fecharComEsc);
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!somNovoPedidoAtivo() || alarmeNovoPedidoPreparado()) return;
+    const reativar = () => {
+      void prepararSomNovoPedido();
+      removerListeners();
+    };
+    const removerListeners = () => {
+      document.removeEventListener('pointerdown', reativar);
+      document.removeEventListener('keydown', reativar);
+    };
+    document.addEventListener('pointerdown', reativar, { once: true });
+    document.addEventListener('keydown', reativar, { once: true });
+    return removerListeners;
+  }, []);
 
   const handleLogout = async () => {
     try {

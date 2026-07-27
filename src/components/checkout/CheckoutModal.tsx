@@ -239,7 +239,6 @@ export const CheckoutModal = ({
     const cidade = normalizarLocalidade(cidadeSelecionada);
     const estado = estadoSelecionado.trim().toUpperCase();
     const cep = cepSelecionado.replace(/\D/g, '');
-    const bairro = normalizarLocalidade(bairroSelecionado);
     const areas = configuracao?.areas_entrega || [];
     const atendida = areas.some((area) => {
       if (
@@ -251,19 +250,13 @@ export const CheckoutModal = ({
       const cepArea = String(area.cep || '').replace(/\D/g, '');
       if (cepArea !== '' && cepArea !== cep) return false;
 
-      const localidades = area.localidades || [];
-      return localidades.length === 0 || localidades.some(
-        (localidade) => normalizarLocalidade(localidade) === bairro,
-      );
+      return true;
     });
 
     if (atendida) return null;
 
     const cobertura = areas.map((area) => {
-      const localidades = area.localidades || [];
-      return localidades.length > 0
-        ? `${area.cep ? `${area.cep} · ` : ''}${area.cidade}/${area.estado}: ${localidades.join(', ')}`
-        : `${area.cep ? `${area.cep} · ` : ''}${area.cidade}/${area.estado}`;
+      return `${area.cep ? `${area.cep} · ` : ''}${area.cidade}/${area.estado}`;
     }).join(' • ');
 
     return cobertura
