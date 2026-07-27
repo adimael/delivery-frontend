@@ -87,7 +87,10 @@ export const useCategoriasProduto = (publicas = true) => {
     setCategorias(ordenadas);
     try {
       await Promise.all(ordenadas.map((categoria) => (
-        categoriasAPI.update(categoria.id, { ordem: categoria.ordem })
+        categoriasAPI.update(categoria.id, {
+          nome: categoria.nome,
+          ordem: categoria.ordem,
+        })
       )));
       return { success: true };
     } catch (error) {
