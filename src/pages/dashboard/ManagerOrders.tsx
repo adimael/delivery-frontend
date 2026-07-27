@@ -7,11 +7,14 @@ import { usePedidos } from "@/hooks/useSupabaseData";
 import { useNotificacoes } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
-import { ativarSomNovoPedido, somNovoPedidoAtivo } from "@/lib/notificationSound";
-import { ativarNotificacoesPedido } from "@/lib/orderNotifications";
+import {
+  alarmeNovoPedidoPreparado,
+  ativarSomNovoPedido,
+  removerNotificacoesSistemaAntigas,
+} from "@/lib/notificationSound";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
@@ -29,21 +32,18 @@ const ManagerOrders = () => {
   const { toast } = useToast();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(
-    () => somNovoPedidoAtivo()
-      && (typeof Notification === 'undefined' || Notification.permission === 'granted'),
-  );
-  const [somAtivo, setSomAtivo] = useState(() => somNovoPedidoAtivo());
+  const [somAtivo, setSomAtivo] = useState(() => alarmeNovoPedidoPreparado());
   const [ativandoAvisos, setAtivandoAvisos] = useState(false);
+
+  useEffect(() => {
+    void removerNotificacoesSistemaAntigas();
+  }, []);
 
   const ativarNotificacoes = async () => {
     setAtivandoAvisos(true);
     try {
       const audioAtivado = await ativarSomNovoPedido();
       setSomAtivo(audioAtivado);
-
-      const notificacaoAtivada = await ativarNotificacoesPedido();
-      setNotificacoesAtivas(audioAtivado && notificacaoAtivada);
 
       if (!audioAtivado) {
         toast({
@@ -55,10 +55,8 @@ const ManagerOrders = () => {
       }
 
       toast({
-        title: notificacaoAtivada ? 'Som e notificações ativados' : 'Som de novos pedidos ativado',
-        description: notificacaoAtivada
-          ? 'Você ouvirá um aviso e receberá uma notificação quando chegar um pedido.'
-          : 'O som está funcionando. As notificações do sistema não foram autorizadas pelo navegador.',
+        title: 'Som de novos pedidos ativado',
+        description: 'O painel tocará um alarme repetido sempre que identificar um novo pedido.',
       });
     } finally {
       setAtivandoAvisos(false);
@@ -253,14 +251,12 @@ const ManagerOrders = () => {
             disabled={ativandoAvisos}
           >
             <Volume2 className="mr-2 h-5 w-5" />
-            {ativandoAvisos ? 'Ativando avisos...' : 'Ativar som e notificações de novos pedidos'}
+            {ativandoAvisos ? 'Ativando alarme...' : 'Ativar alarme de novos pedidos'}
           </Button>
         ) : (
           <div className="flex min-h-12 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800">
             <Volume2 className="h-5 w-5" />
-            {notificacoesAtivas
-              ? 'Som e notificações de novos pedidos estão ativos'
-              : 'Som de novos pedidos está ativo'}
+            Alarme de novos pedidos ativo enquanto o painel estiver aberto
           </div>
         )}
         <div className="grid gap-4 md:grid-cols-4">

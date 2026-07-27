@@ -145,18 +145,6 @@ export const useAvailableDeliveries = () => {
             try {
               // in-app toast
               try { toast?.({ title: 'Novas entregas disponíveis', description: `Há ${added} nova(s) entrega(s) disponíveis.` }); } catch (e) { /* ignore */ }
-              // browser notification
-              if (typeof Notification !== 'undefined') {
-                if (Notification.permission === 'granted') {
-                  new Notification('Novas entregas', { body: `Há ${added} novas entrega(s) disponíveis.` });
-                } else if (Notification.permission !== 'denied') {
-                  Notification.requestPermission().then((perm) => {
-                    if (perm === 'granted') {
-                      new Notification('Novas entregas', { body: `Há ${added} novas entrega(s) disponíveis.` });
-                    }
-                  }).catch(() => {});
-                }
-              }
             } catch (e) { console.warn('Erro ao notificar sobre novas entregas', e); }
           }
           prevCountRef.current = nextCount;
