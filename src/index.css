@@ -818,6 +818,38 @@
     color: #7a8791;
   }
 
+  .delivery-opening-hours {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    color: #50545c;
+    font-size: 14px;
+  }
+
+  .delivery-opening-hours > svg {
+    width: 18px;
+    flex: none;
+    color: #7a8791;
+  }
+
+  .delivery-opening-hours > div {
+    display: grid;
+    gap: 5px;
+  }
+
+  .delivery-opening-hours span {
+    display: block;
+  }
+
+  .delivery-info-hours {
+    display: grid;
+    gap: 5px;
+  }
+
+  .delivery-info-hours p {
+    margin: 0;
+  }
+
   .delivery-social-footer {
     display: grid;
     padding: 24px 20px 100px;

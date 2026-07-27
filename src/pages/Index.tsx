@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCategoriasProduto } from "@/hooks/useCategoriasProduto";
-import { useEstabelecimento } from "@/hooks/useEstabelecimento";
+import {
+  ConfiguracaoEstabelecimento,
+  useEstabelecimento,
+} from "@/hooks/useEstabelecimento";
 import { useProdutos } from "@/hooks/useProdutos";
 import { ProductCard, ProductProps } from "@/components/products/ProductCard";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -21,6 +24,37 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import EnderecoForm from "@/components/profile/EnderecoForm";
 
 const fallbackImage = "/placeholder.svg";
+
+const booleano = (valor: unknown): boolean => (
+  valor === true
+  || valor === 1
+  || ['1', 'true', 'sim'].includes(String(valor ?? '').trim().toLowerCase())
+);
+
+const horariosDaSemana = (
+  configuracao: ConfiguracaoEstabelecimento | null,
+): string[] => {
+  const dias = [
+    ['segunda', 'Segunda-feira'],
+    ['terca', 'Terça-feira'],
+    ['quarta', 'Quarta-feira'],
+    ['quinta', 'Quinta-feira'],
+    ['sexta', 'Sexta-feira'],
+    ['sabado', 'Sábado'],
+    ['domingo', 'Domingo'],
+  ] as const;
+
+  return dias.map(([chave, nome]) => {
+    if (!booleano(configuracao?.[`aberto_${chave}`])) return `${nome}: fechado`;
+    const abertura = configuracao?.[`hora_abertura_${chave}`]
+      || configuracao?.hora_abertura
+      || '08:00';
+    const fechamento = configuracao?.[`hora_fechamento_${chave}`]
+      || configuracao?.hora_fechamento
+      || '18:00';
+    return `${nome}: ${abertura} às ${fechamento}`;
+  });
+};
 
 const linkInstagram = (valor?: string): string | null => {
   const informado = valor?.trim();
@@ -106,6 +140,7 @@ export default function Index() {
   const platformName = configuracao?.nome_plataforma || "Meu Delivery";
   const instagramUrl = linkInstagram(configuracao?.instagram);
   const whatsappUrl = linkWhatsApp(configuracao?.whatsapp);
+  const horarios = useMemo(() => horariosDaSemana(configuracao), [configuracao]);
   const possuiRedesSociais = Boolean(instagramUrl || whatsappUrl);
   const location = [
     configuracao?.endereco_estabelecimento,
@@ -271,7 +306,13 @@ export default function Index() {
           <h2>{platformName}</h2>
           <p>{configuracao?.descricao_plataforma || "Comida saborosa, preparada com cuidado e entregue onde você estiver."}</p>
           {location && <span><MapPin /> {location}</span>}
-          <span><Clock3 /> {configuracao?.hora_abertura || "08:00"} às {configuracao?.hora_fechamento || "18:00"}</span>
+          <div className="delivery-opening-hours">
+            <Clock3 />
+            <div>
+              <strong>Horário de funcionamento</strong>
+              {horarios.map((horario) => <span key={horario}>{horario}</span>)}
+            </div>
+          </div>
         </section>
         <footer className="delivery-social-footer">
           {possuiRedesSociais && (
@@ -322,7 +363,15 @@ export default function Index() {
               <div><h3>{platformName}</h3><p>{configuracao?.descricao_plataforma || "Comida preparada com cuidado e entregue até você."}</p></div>
             </div>
             <article><MapPin /><div><h3>Endereço</h3><p>{location || "Endereço ainda não informado."}</p></div></article>
-            <article><Clock3 /><div><h3>Horário de funcionamento</h3><p>{configuracao?.hora_abertura || "08:00"} às {configuracao?.hora_fechamento || "18:00"}</p></div></article>
+            <article>
+              <Clock3 />
+              <div>
+                <h3>Horário de funcionamento</h3>
+                <div className="delivery-info-hours">
+                  {horarios.map((horario) => <p key={horario}>{horario}</p>)}
+                </div>
+              </div>
+            </article>
             <article><Truck /><div><h3>Entrega</h3><p>Taxa a partir de {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(configuracao?.taxa_entrega || 0))}</p></div></article>
           </section>
         </div>

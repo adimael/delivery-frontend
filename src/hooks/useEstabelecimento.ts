@@ -102,8 +102,17 @@ const calcularAberto = (config: ConfiguracaoEstabelecimento | null): boolean => 
   if (!config || !valorBooleano(config.aberto)) return false;
   if (config.esta_aberto !== undefined) return valorBooleano(config.esta_aberto);
 
-  const abertura = horaEmMinutos(config.hora_abertura ?? '');
-  const fechamento = horaEmMinutos(config.hora_fechamento ?? '');
+  const dias = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'] as const;
+  const dia = dias[new Date().getDay()];
+  const abertoNoDia = config[`aberto_${dia}`];
+  if (abertoNoDia !== undefined && !valorBooleano(abertoNoDia)) return false;
+
+  const abertura = horaEmMinutos(
+    String(config[`hora_abertura_${dia}`] || config.hora_abertura || ''),
+  );
+  const fechamento = horaEmMinutos(
+    String(config[`hora_fechamento_${dia}`] || config.hora_fechamento || ''),
+  );
   if (abertura === null || fechamento === null || abertura === fechamento) return false;
 
   const agora = new Date();

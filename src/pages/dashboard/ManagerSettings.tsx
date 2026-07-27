@@ -1052,8 +1052,11 @@ const ManagerSettings = () => {
               </div>
             </div>
             
-            <div className="hidden" aria-hidden="true">
-              <h3 className="text-lg font-medium mb-4">Horários por Dia da Semana</h3>
+            <div className="rounded-3xl border bg-muted/20 p-4 sm:p-6">
+              <h3 className="text-lg font-medium mb-1">Dias de funcionamento</h3>
+              <p className="mb-5 text-sm text-muted-foreground">
+                Marque os dias em que o estabelecimento atende e defina os horários de cada dia.
+              </p>
               
               {/* Segunda-feira */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center mb-3">
