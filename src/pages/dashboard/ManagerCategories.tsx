@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Edit, GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCategoriasProduto } from "@/hooks/useCategoriasProduto";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -19,11 +19,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 const ManagerCategories = () => {
-  const { categorias, loading, criarCategoria, atualizarCategoria, deletarCategoria } = useCategoriasProduto();
+  const {
+    categorias,
+    loading,
+    criarCategoria,
+    atualizarCategoria,
+    deletarCategoria,
+    reordenarCategorias,
+  } = useCategoriasProduto(false);
   const { toast } = useToast();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     descricao: ''
@@ -94,6 +103,42 @@ const ManagerCategories = () => {
     setIsDialogOpen(true);
   };
 
+  const salvarNovaOrdem = async (ids: string[]) => {
+    if (savingOrder || ids.length !== categorias.length) return;
+    setSavingOrder(true);
+    const result = await reordenarCategorias(ids);
+    setSavingOrder(false);
+    toast({
+      title: result.success ? "Ordem atualizada" : "Não foi possível alterar a ordem",
+      description: result.success
+        ? "A nova ordem já será usada no cardápio e na opção Tudo."
+        : "A ordem anterior foi restaurada. Tente novamente.",
+      variant: result.success ? "default" : "destructive",
+    });
+  };
+
+  const moverCategoria = (indice: number, deslocamento: -1 | 1) => {
+    const destino = indice + deslocamento;
+    if (destino < 0 || destino >= categorias.length) return;
+    const ids = categorias.map(item => item.id);
+    [ids[indice], ids[destino]] = [ids[destino], ids[indice]];
+    void salvarNovaOrdem(ids);
+  };
+
+  const soltarCategoria = (destinoId: string) => {
+    if (!draggedCategory || draggedCategory === destinoId) {
+      setDraggedCategory(null);
+      return;
+    }
+    const ids = categorias.map(item => item.id);
+    const origem = ids.indexOf(draggedCategory);
+    const destino = ids.indexOf(destinoId);
+    if (origem < 0 || destino < 0) return;
+    ids.splice(destino, 0, ids.splice(origem, 1)[0]);
+    setDraggedCategory(null);
+    void salvarNovaOrdem(ids);
+  };
+
   if (loading) {
     return (
       <DashboardLayout title="Categorias" userType="manager">
@@ -110,7 +155,7 @@ const ManagerCategories = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Categorias de Produtos</h1>
-            <p className="text-gray-600">Gerencie as categorias dos seus produtos</p>
+            <p className="text-gray-600">Gerencie e ordene as seções exibidas no cardápio</p>
           </div>
           <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
@@ -118,12 +163,39 @@ const ManagerCategories = () => {
           </Button>
         </div>
 
+        {categorias.length > 0 && (
+          <div className="flex items-center justify-between rounded-xl border bg-muted/40 px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              Arraste os cards ou use as setas para definir a ordem no cardápio.
+            </p>
+            {savingOrder && (
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <Loader2 className="h-4 w-4 animate-spin" /> Salvando
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categorias.map((categoria) => (
-            <Card key={categoria.id}>
+          {categorias.map((categoria, indice) => (
+            <Card
+              key={categoria.id}
+              draggable={!savingOrder}
+              onDragStart={() => setDraggedCategory(categoria.id)}
+              onDragEnd={() => setDraggedCategory(null)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => soltarCategoria(categoria.id)}
+              className={draggedCategory === categoria.id ? "opacity-50" : ""}
+            >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{categoria.nome}</CardTitle>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <GripVertical className="h-5 w-5 shrink-0 cursor-grab text-muted-foreground" />
+                    <span className="text-xs font-bold text-muted-foreground">
+                      {String(indice + 1).padStart(2, "0")}
+                    </span>
+                    <CardTitle className="truncate text-lg">{categoria.nome}</CardTitle>
+                  </div>
                   <Badge variant={categoria.ativo ? "default" : "secondary"}>
                     {categoria.ativo ? "Ativa" : "Inativa"}
                   </Badge>
@@ -136,6 +208,24 @@ const ManagerCategories = () => {
                   </p>
                   
                   <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={savingOrder || indice === 0}
+                      onClick={() => moverCategoria(indice, -1)}
+                      aria-label={`Mover ${categoria.nome} para cima`}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={savingOrder || indice === categorias.length - 1}
+                      onClick={() => moverCategoria(indice, 1)}
+                      aria-label={`Mover ${categoria.nome} para baixo`}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

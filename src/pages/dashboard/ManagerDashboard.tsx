@@ -8,14 +8,46 @@ import {
   TrendingUp, 
   DollarSign, 
   Clock,
-  Settings
+  Settings,
+  Loader2,
+  Power,
 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
+import { useToast } from "@/hooks/use-toast";
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
-  const { configuracao, estaAberto, loading } = useEstabelecimento();
+  const { configuracao, estaAberto, loading, atualizarConfiguracao } = useEstabelecimento();
+  const { toast } = useToast();
+  const [alterandoStatus, setAlterandoStatus] = useState(false);
+  const recebimentoAtivado = configuracao?.aberto === true
+    || configuracao?.aberto === 1
+    || ['1', 'true', 'sim'].includes(String(configuracao?.aberto ?? '').toLowerCase());
+
+  const alternarStatus = async () => {
+    if (alterandoStatus || loading) return;
+    const abrir = !recebimentoAtivado;
+    setAlterandoStatus(true);
+    try {
+      await atualizarConfiguracao({ aberto: abrir });
+      toast({
+        title: abrir ? "Estabelecimento ativado" : "Estabelecimento fechado",
+        description: abrir
+          ? "O recebimento de pedidos foi ativado e respeitará o horário configurado."
+          : "Novos pedidos foram interrompidos imediatamente.",
+      });
+    } catch {
+      toast({
+        title: "Não foi possível alterar o status",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setAlterandoStatus(false);
+    }
+  };
 
   // Formatar horário
   const horaAbertura = configuracao?.hora_abertura?.slice(0,5) || "08:00";
@@ -49,7 +81,7 @@ const ManagerDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
               <div className="text-center">
                 <div className={`text-2xl font-bold ${estaAberto ? "text-green-600" : "text-red-600"}`}>
                   {estaAberto ? "Aberto" : "Fechado"}
@@ -62,12 +94,26 @@ const ManagerDashboard = () => {
                 </div>
                 <p className="text-sm text-gray-500">Horário de funcionamento</p>
               </div>
-              <div className="text-center">
-                <Button 
+              <div className="flex flex-col justify-center gap-2 xl:flex-row">
+                <Button
+                  type="button"
+                  onClick={alternarStatus}
+                  disabled={alterandoStatus || loading}
+                  className={recebimentoAtivado
+                    ? "min-h-11 bg-red-600 text-white hover:bg-red-700"
+                    : "min-h-11 bg-emerald-600 text-white hover:bg-emerald-700"}
+                >
+                  {alterandoStatus
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <Power className="mr-2 h-4 w-4" />}
+                  {recebimentoAtivado ? "Fechar estabelecimento" : "Abrir estabelecimento"}
+                </Button>
+                <Button
                   onClick={() => navigate('/dashboard/gerente/configuracoes')}
                   variant="outline"
+                  className="min-h-11"
                 >
-                  Configurar
+                  Configurar horários
                 </Button>
               </div>
             </div>
