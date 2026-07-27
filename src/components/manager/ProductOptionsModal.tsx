@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -482,13 +488,17 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
           <DialogTitle className="pr-2">
             Gerenciar Ingredientes/Opções {produtoNome && `- ${produtoNome}`}
           </DialogTitle>
+          <DialogDescription>
+            Cadastre as opções deste produto, deixe-as disponíveis e organize a ordem de exibição.
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full product-options-tabs">
           <div className="options-toolbar">
-            <TabsList className="modal-tabs grid w-full grid-cols-2">
+            <TabsList className="modal-tabs grid w-full grid-cols-3">
               <TabsTrigger value="categorias">1. Categorias</TabsTrigger>
               <TabsTrigger value="opcoes" disabled={categorias.length === 0}>2. Adicionais</TabsTrigger>
+              <TabsTrigger value="produto">3. No produto</TabsTrigger>
             </TabsList>
             {(activeTab === "categorias" || activeTab === "opcoes") && (
               <Button onClick={() => {
