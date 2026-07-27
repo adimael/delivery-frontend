@@ -31,6 +31,7 @@ export interface ConfiguracaoEstabelecimento {
   localidades_frete_gratis?: string[];
   entrega_restrita?: boolean | number | string;
   areas_entrega?: Array<{
+    cep?: string;
     cidade: string;
     estado: string;
     localidades: string[];

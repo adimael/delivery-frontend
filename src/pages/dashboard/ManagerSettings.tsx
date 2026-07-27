@@ -183,6 +183,18 @@ const ManagerSettings = () => {
       return;
     }
     if (valorBooleano(formData.entrega_restrita)) {
+      const areaComCepInvalido = (formData.areas_entrega || []).some((area) => {
+        const cep = String(area.cep || '').replace(/\D/g, '');
+        return cep !== '' && cep.length !== 8;
+      });
+      if (areaComCepInvalido) {
+        toast({
+          title: "CEP inválido",
+          description: "Informe um CEP com 8 dígitos ou deixe o campo vazio para atender toda a cidade.",
+          variant: "destructive",
+        });
+        return;
+      }
       const areasValidas = (formData.areas_entrega || []).filter(
         (area) => area.cidade.trim() !== '' && /^[A-Z]{2}$/.test(area.estado.trim().toUpperCase()),
       );
@@ -363,6 +375,49 @@ const ManagerSettings = () => {
       }));
     } catch {
       // O CEP do PIX é opcional e permanece editável.
+    }
+  };
+
+  const preencherAreaPeloCep = async (indice: number, valor: string) => {
+    formularioEmEdicao.current = true;
+    const cep = formatarCep(valor);
+    setFormData(prev => ({
+      ...prev,
+      areas_entrega: (prev.areas_entrega || []).map((area, atual) => (
+        atual === indice ? { ...area, cep } : area
+      )),
+    }));
+    if (cep.replace(/\D/g, '').length !== 8) return;
+
+    try {
+      const dados = await buscarEnderecoPorCep(cep);
+      if (!dados) {
+        toast({
+          title: "CEP não encontrado",
+          description: "Confira o CEP informado para esta área de entrega.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setFormData(prev => ({
+        ...prev,
+        areas_entrega: (prev.areas_entrega || []).map((area, atual) => (
+          atual === indice
+            ? {
+                ...area,
+                cep: dados.cep,
+                cidade: dados.cidade,
+                estado: dados.estado,
+              }
+            : area
+        )),
+      }));
+    } catch {
+      toast({
+        title: "Consulta de CEP indisponível",
+        description: "Você ainda pode preencher a cidade e a UF manualmente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -675,10 +730,13 @@ const ManagerSettings = () => {
                 </div>
                 <Switch
                   checked={valorBooleano(formData.entrega_restrita)}
-                  onCheckedChange={(checked) => setFormData(prev => ({
-                    ...prev,
-                    entrega_restrita: checked,
-                  }))}
+                  onCheckedChange={(checked) => {
+                    formularioEmEdicao.current = true;
+                    setFormData(prev => ({
+                      ...prev,
+                      entrega_restrita: checked,
+                    }));
+                  }}
                   aria-label="Restringir área de entrega"
                 />
               </div>
@@ -687,7 +745,21 @@ const ManagerSettings = () => {
                 <div className="mt-5 space-y-4">
                   {(formData.areas_entrega || []).map((area, indice) => (
                     <div key={indice} className="rounded-2xl border bg-background p-4">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_110px_auto]">
+                      <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)_110px_auto]">
+                        <div>
+                          <Label htmlFor={`area-cep-${indice}`}>CEP</Label>
+                          <Input
+                            id={`area-cep-${indice}`}
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                            value={area.cep || ''}
+                            placeholder="00000-000"
+                            onChange={(event) => void preencherAreaPeloCep(indice, event.target.value)}
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Preenche cidade e UF
+                          </p>
+                        </div>
                         <div>
                           <Label htmlFor={`area-cidade-${indice}`}>Cidade atendida</Label>
                           <Input
@@ -778,7 +850,7 @@ const ManagerSettings = () => {
                       ...prev,
                       areas_entrega: [
                         ...(prev.areas_entrega || []),
-                        { cidade: '', estado: '', localidades: [] },
+                        { cep: '', cidade: '', estado: '', localidades: [] },
                       ],
                     }))}
                   >

@@ -225,6 +225,9 @@ export const CheckoutModal = ({
   const estadoSelecionado = usandoEnderecoSalvo
     ? enderecoSelecionado?.estado || ''
     : orderData.estado;
+  const cepSelecionado = usandoEnderecoSalvo
+    ? enderecoSelecionado?.cep || ''
+    : orderData.cep;
   const entregaRestrita = configuracao?.entrega_restrita === true
     || configuracao?.entrega_restrita === 1
     || configuracao?.entrega_restrita === '1'
@@ -235,6 +238,7 @@ export const CheckoutModal = ({
 
     const cidade = normalizarLocalidade(cidadeSelecionada);
     const estado = estadoSelecionado.trim().toUpperCase();
+    const cep = cepSelecionado.replace(/\D/g, '');
     const bairro = normalizarLocalidade(bairroSelecionado);
     const areas = configuracao?.areas_entrega || [];
     const atendida = areas.some((area) => {
@@ -244,6 +248,8 @@ export const CheckoutModal = ({
       ) {
         return false;
       }
+      const cepArea = String(area.cep || '').replace(/\D/g, '');
+      if (cepArea !== '' && cepArea !== cep) return false;
 
       const localidades = area.localidades || [];
       return localidades.length === 0 || localidades.some(
@@ -256,8 +262,8 @@ export const CheckoutModal = ({
     const cobertura = areas.map((area) => {
       const localidades = area.localidades || [];
       return localidades.length > 0
-        ? `${area.cidade}/${area.estado}: ${localidades.join(', ')}`
-        : `${area.cidade}/${area.estado}`;
+        ? `${area.cep ? `${area.cep} · ` : ''}${area.cidade}/${area.estado}: ${localidades.join(', ')}`
+        : `${area.cep ? `${area.cep} · ` : ''}${area.cidade}/${area.estado}`;
     }).join(' • ');
 
     return cobertura
@@ -784,6 +790,7 @@ export const CheckoutModal = ({
         bairro_entrega: tipoEntrega === 'entrega' ? bairroSelecionado : null,
         cidade_entrega: tipoEntrega === 'entrega' ? cidadeSelecionada : null,
         estado_entrega: tipoEntrega === 'entrega' ? estadoSelecionado : null,
+        cep_entrega: tipoEntrega === 'entrega' ? cepSelecionado : null,
         cupom_codigo: cupomAplicado?.codigo || null,
         forma_pagamento: orderData.formaPagamento,
         valor_total: calculatedValues.totalAjustado,
