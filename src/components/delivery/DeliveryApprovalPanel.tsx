@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, Clock3, MapPin, ShieldCheck, Truck, X } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { startSmartPolling } from "@/lib/smartPolling";
+import {
+  isRealtimeConnected,
+  subscribeRealtime,
+  subscribeRealtimeState,
+} from "@/lib/realtime";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +34,21 @@ export function DeliveryApprovalPanel() {
 
   useEffect(() => {
     void load();
-    return startSmartPolling(load, { activeInterval: 20_000, hiddenInterval: 90_000 });
+    const unsubscribeEvent = subscribeRealtime("delivery.delivery-requests.updated", () => {
+      void load();
+    });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void load();
+    });
+    const stopFallback = startSmartPolling(
+      () => (isRealtimeConnected() ? undefined : load()),
+      { activeInterval: 45_000, hiddenInterval: 2 * 60_000 },
+    );
+    return () => {
+      unsubscribeEvent();
+      unsubscribeState();
+      stopFallback();
+    };
   }, [load]);
 
   const decide = async (id: string, decisao: "aprovada" | "rejeitada") => {

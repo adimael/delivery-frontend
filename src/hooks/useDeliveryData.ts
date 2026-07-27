@@ -4,6 +4,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/api';
 import { startSmartPolling } from '@/lib/smartPolling';
+import {
+  isRealtimeConnected,
+  subscribeRealtime,
+  subscribeRealtimeState,
+} from '@/lib/realtime';
 
 export interface DeliveryOrder {
   id: string;
@@ -155,10 +160,27 @@ export const useAvailableDeliveries = () => {
       }
       setLoading(false);
     };
-    fetchAvailableDeliveries();
-    const stopPolling = startSmartPolling(fetchAvailableDeliveries);
+    void fetchAvailableDeliveries();
+    const unsubscribeOrders = subscribeRealtime('delivery.orders.updated', () => {
+      void fetchAvailableDeliveries();
+    });
+    const unsubscribeRequests = subscribeRealtime('delivery.delivery-requests.updated', () => {
+      void fetchAvailableDeliveries();
+    });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void fetchAvailableDeliveries();
+    });
+    const stopPolling = startSmartPolling(() => (
+      isRealtimeConnected() ? undefined : fetchAvailableDeliveries()
+    ), {
+      activeInterval: 30_000,
+      hiddenInterval: 2 * 60_000,
+    });
 
     return () => {
+      unsubscribeOrders();
+      unsubscribeRequests();
+      unsubscribeState();
       stopPolling();
     };
   }, [user, toast]);
@@ -234,11 +256,28 @@ export const useMyDeliveries = () => {
   }, [user]);
 
   useEffect(() => {
-    fetchMyDeliveries();
+    void fetchMyDeliveries();
 
     // Adicionar listener do Socket.IO para atualização em tempo real
-    const stopPolling = startSmartPolling(fetchMyDeliveries);
+    const unsubscribeOrders = subscribeRealtime('delivery.orders.updated', () => {
+      void fetchMyDeliveries();
+    });
+    const unsubscribeRequests = subscribeRealtime('delivery.delivery-requests.updated', () => {
+      void fetchMyDeliveries();
+    });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void fetchMyDeliveries();
+    });
+    const stopPolling = startSmartPolling(() => (
+      isRealtimeConnected() ? undefined : fetchMyDeliveries()
+    ), {
+      activeInterval: 30_000,
+      hiddenInterval: 2 * 60_000,
+    });
     return () => {
+      unsubscribeOrders();
+      unsubscribeRequests();
+      unsubscribeState();
       stopPolling();
     };
   }, [fetchMyDeliveries]);

@@ -3,6 +3,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/api';
 import { startSmartPolling } from '@/lib/smartPolling';
 import { tocarSomNovoPedido } from '@/lib/notificationSound';
+import {
+  isRealtimeConnected,
+  subscribeRealtime,
+  subscribeRealtimeState,
+} from '@/lib/realtime';
 
 export interface Produto {
   id: string;
@@ -121,7 +126,10 @@ export const useProdutos = () => {
       } catch (err) { console.error('Erro ao buscar produtos:', err); setProdutos([]); }
       finally { setLoading(false); }
     };
-    fetchProdutos();
+    void fetchProdutos();
+    return subscribeRealtime('delivery.catalog.updated', () => {
+      void fetchProdutos();
+    });
   }, []);
 
   return { produtos, loading };
@@ -145,6 +153,53 @@ export const useProdutoOpcoes = (produtoId: string) => {
   return { hasOptions, loading };
 };
 
+const normalizarPedido = (pedido: unknown): Pedido => {
+  const p = (typeof pedido === 'object' && pedido !== null)
+    ? (pedido as Partial<Pedido>)
+    : {} as Partial<Pedido>;
+  const numero_pedido = p.numero_pedido || `KMK${String(p.id || '').slice(-6)}`;
+  const itens_raw = (p.itens_pedido || []) as unknown[];
+  const itens_pedido = itens_raw.map((item: unknown) => {
+    const it = (typeof item === 'object' && item !== null)
+      ? (item as { produto_nome?: string; observacoes?: string })
+      : {};
+    let produto_nome = it.produto_nome;
+    if (!produto_nome && typeof it.observacoes === 'string' && it.observacoes) {
+      try {
+        const parsed = JSON.parse(it.observacoes);
+        produto_nome = parsed && parsed.nome ? parsed.nome : undefined;
+      } catch {
+        // Observações em texto livre continuam válidas.
+      }
+    }
+    return {
+      ...(typeof item === 'object' && item !== null ? item as object : {}),
+      produto_nome: produto_nome || 'Produto',
+    };
+  });
+
+  return {
+    ...(p as object),
+    numero_pedido,
+    perfis: p.perfis || undefined,
+    entregador: p.entregador || undefined,
+    itens_pedido,
+  } as Pedido;
+};
+
+const ordenarPedidosRecentes = (pedidos: Pedido[]) => pedidos.sort((a, b) => {
+  const dataA = new Date(a.criado_em).getTime();
+  const dataB = new Date(b.criado_em).getTime();
+  if (Number.isFinite(dataA) && Number.isFinite(dataB) && dataA !== dataB) {
+    return dataB - dataA;
+  }
+  return String(b.numero_pedido || b.id).localeCompare(
+    String(a.numero_pedido || a.id),
+    'pt-BR',
+    { numeric: true },
+  );
+});
+
 export const usePedidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,44 +215,10 @@ export const usePedidos = () => {
     try {
       const data = await apiRequest('/pedidos');
       {
-        let pedidosFormatted = (data || []).map((pedido: unknown) => {
-          const p = (typeof pedido === 'object' && pedido !== null) ? (pedido as Partial<Pedido>) : {} as Partial<Pedido>;
-          const numero_pedido = p.numero_pedido || `KMK${(String(p.id || '')).slice(-6)}`;
-          const perfis = p.perfis || undefined;
-          const entregador = p.entregador || undefined;
-          const itens_raw = (p.itens_pedido || []) as unknown[];
-          const itens_pedido = itens_raw.map((item: unknown) => {
-            const it = (typeof item === 'object' && item !== null) ? (item as { produto_nome?: string; observacoes?: string }) : {};
-            let produto_nome = it.produto_nome as string | undefined;
-            if (!produto_nome) {
-              try {
-                if (typeof it.observacoes === 'string' && it.observacoes) {
-                  const parsed = JSON.parse(it.observacoes as string);
-                  produto_nome = parsed && parsed.nome ? parsed.nome : undefined;
-                }
-              } catch (e) {
-                // ignore parse errors
-              }
-            }
-            return { ...(typeof item === 'object' && item !== null ? item as object : {}), produto_nome: produto_nome || 'Produto' };
-          });
-
-          return { ...(p as object), numero_pedido, perfis, entregador, itens_pedido } as Pedido;
-        });
+        let pedidosFormatted = (data || []).map(normalizarPedido);
 
         if (user.tipo_usuario === 'cliente') pedidosFormatted = pedidosFormatted.filter(p => p.cliente_id === user.id);
-        pedidosFormatted.sort((a, b) => {
-          const dataA = new Date(a.criado_em).getTime();
-          const dataB = new Date(b.criado_em).getTime();
-          if (Number.isFinite(dataA) && Number.isFinite(dataB) && dataA !== dataB) {
-            return dataB - dataA;
-          }
-          return String(b.numero_pedido || b.id).localeCompare(
-            String(a.numero_pedido || a.id),
-            'pt-BR',
-            { numeric: true },
-          );
-        });
+        ordenarPedidosRecentes(pedidosFormatted);
 
         const currentIds = new Set<string>(pedidosFormatted.map(p => String(p.id)));
         if (firstLoadRef.current) {
@@ -245,12 +266,26 @@ export const usePedidos = () => {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
-    fetchPedidos();
-    return startSmartPolling(fetchPedidos, {
-      activeInterval: 6_000,
-      hiddenInterval: 30_000,
-      maxInterval: 3 * 60_000,
+    void fetchPedidos();
+    const unsubscribeEvent = subscribeRealtime('delivery.orders.updated', () => {
+      void fetchPedidos();
     });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void fetchPedidos();
+    });
+    const stopFallback = startSmartPolling(() => (
+      isRealtimeConnected() ? undefined : fetchPedidos()
+    ), {
+      activeInterval: 30_000,
+      hiddenInterval: 2 * 60_000,
+      maxInterval: 5 * 60_000,
+    });
+
+    return () => {
+      unsubscribeEvent();
+      unsubscribeState();
+      stopFallback();
+    };
   }, [fetchPedidos, user]);
 
   const markOrdersSeen = () => { prevSeenIdsRef.current = new Set(pedidos.map(p => p.id)); setNewOrdersCount(0); };
@@ -282,6 +317,131 @@ export const usePedidos = () => {
   };
 };
 
+type EscopoPedidos = 'hoje' | 'historico';
+
+interface PaginaPedidos {
+  pedidos?: unknown[];
+  proximo_cursor?: string | null;
+  tem_mais?: boolean;
+}
+
+export const usePedidosPaginados = (
+  escopo: EscopoPedidos,
+  dataHistorico: string | null = null,
+) => {
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const { user } = useAuth();
+  const requestIdRef = useRef(0);
+  const cursorRef = useRef<string | null>(null);
+  const loadingMoreRef = useRef(false);
+  const loadedOnceRef = useRef(false);
+
+  const carregar = useCallback(async (reiniciar: boolean) => {
+    if (!user || (!reiniciar && (!cursorRef.current || loadingMoreRef.current))) return;
+    const requestId = ++requestIdRef.current;
+    if (reiniciar) {
+      if (!loadedOnceRef.current) setLoading(true);
+    } else {
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+    }
+    try {
+      const params = new URLSearchParams({
+        paginado: '1',
+        escopo,
+        limite: '20',
+      });
+      if (!reiniciar && cursorRef.current) params.set('cursor', cursorRef.current);
+      if (escopo === 'historico' && dataHistorico) params.set('data', dataHistorico);
+      const resposta = await apiRequest(`/pedidos?${params.toString()}`) as PaginaPedidos;
+      if (requestId !== requestIdRef.current) return;
+      const pagina = Array.isArray(resposta?.pedidos)
+        ? resposta.pedidos.map(normalizarPedido)
+        : [];
+      setPedidos((atuais) => {
+        const combinados = reiniciar ? pagina : [...atuais, ...pagina];
+        return ordenarPedidosRecentes(Array.from(
+          new Map(combinados.map((pedido) => [pedido.id, pedido])).values(),
+        ));
+      });
+      cursorRef.current = typeof resposta?.proximo_cursor === 'string'
+        ? resposta.proximo_cursor
+        : null;
+      setHasMore(resposta?.tem_mais === true);
+      loadedOnceRef.current = true;
+    } finally {
+      setLoading(false);
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [dataHistorico, escopo, user]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    cursorRef.current = null;
+    try {
+      await carregar(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [carregar]);
+
+  useEffect(() => {
+    setPedidos([]);
+    cursorRef.current = null;
+    loadedOnceRef.current = false;
+    setHasMore(false);
+    void carregar(true);
+  // A alteração do cursor não deve reiniciar a página.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, escopo, dataHistorico]);
+
+  useEffect(() => {
+    if (escopo !== 'hoje') return undefined;
+    const unsubscribeEvent = subscribeRealtime('delivery.orders.updated', () => {
+      setCursor(null);
+      void carregar(true);
+    });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void carregar(true);
+    });
+    return () => {
+      unsubscribeEvent();
+      unsubscribeState();
+    };
+  }, [carregar, escopo]);
+
+  const atualizarStatusPedido = async (pedidoId: string, novoStatus: string) => {
+    try {
+      await apiRequest(`/pedidos/${pedidoId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: novoStatus }),
+      });
+      setPedidos((atuais) => atuais.map((pedido) => (
+        pedido.id === pedidoId ? { ...pedido, status: novoStatus } : pedido
+      )));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  return {
+    pedidos,
+    loading,
+    loadingMore,
+    refreshing,
+    hasMore,
+    loadMore: () => carregar(false),
+    refreshPedidos: refresh,
+    atualizarStatusPedido,
+  };
+};
+
 export const useNotificacoes = () => {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,10 +461,24 @@ export const useNotificacoes = () => {
       }
     };
     void fetchNotificacoes();
-    return startSmartPolling(fetchNotificacoes, {
-      activeInterval: 10_000,
-      hiddenInterval: 60_000,
+    const unsubscribeEvent = subscribeRealtime('delivery.notifications.updated', () => {
+      void fetchNotificacoes();
     });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void fetchNotificacoes();
+    });
+    const stopFallback = startSmartPolling(() => (
+      isRealtimeConnected() ? undefined : fetchNotificacoes()
+    ), {
+      activeInterval: 45_000,
+      hiddenInterval: 2 * 60_000,
+    });
+
+    return () => {
+      unsubscribeEvent();
+      unsubscribeState();
+      stopFallback();
+    };
   }, [user]);
 
   const marcarComoLida = async (notificacaoId: string) => {

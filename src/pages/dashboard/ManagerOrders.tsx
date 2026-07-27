@@ -3,12 +3,11 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { usePedidos } from "@/hooks/useSupabaseData";
-import { useNotificacoes } from "@/hooks/useSupabaseData";
+import { usePedidosPaginados } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
-import { useEffect, useState } from "react";
-import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Receipt, Clock, User, MapPin, DollarSign, Phone, MessageSquare, Volume2, Loader2, CalendarDays, History } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import {
   alarmeNovoPedidoPreparado,
@@ -20,16 +19,21 @@ import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPan
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 
 const ManagerOrders = () => {
+  const [escopo, setEscopo] = useState<'hoje' | 'historico'>('hoje');
+  const [dataHistorico, setDataHistorico] = useState('');
   const {
     pedidos,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     refreshing,
     atualizarStatusPedido,
-    newOrdersCount,
-    markOrdersSeen,
     refreshPedidos,
-  } = usePedidos();
-  const { notificacoes, marcarComoLida } = useNotificacoes();
+  } = usePedidosPaginados(
+    escopo,
+    escopo === 'historico' && dataHistorico ? dataHistorico : null,
+  );
   const { toast } = useToast();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -37,10 +41,23 @@ const ManagerOrders = () => {
     () => alarmeNovoPedidoPreparado() || somNovoPedidoAtivo(),
   );
   const [ativandoAvisos, setAtivandoAvisos] = useState(false);
+  const infiniteScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void removerNotificacoesSistemaAntigas();
   }, []);
+
+  useEffect(() => {
+    const alvo = infiniteScrollRef.current;
+    if (!alvo || !hasMore) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && !loadingMore) {
+        void loadMore();
+      }
+    }, { rootMargin: '500px 0px' });
+    observer.observe(alvo);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, loadingMore]);
 
   const ativarNotificacoes = async () => {
     setAtivandoAvisos(true);
@@ -133,10 +150,10 @@ const ManagerOrders = () => {
   const handleRefresh = async () => {
     await refreshPedidos();
     toast({
-      title: newOrdersCount > 0 ? 'Novo pedido carregado' : 'Pedidos atualizados',
-      description: newOrdersCount > 0
-        ? `${newOrdersCount} novo(s) pedido(s) foram carregados no topo da lista.`
-        : 'A lista já está atualizada e os pedidos mais recentes estão no topo.',
+      title: 'Pedidos atualizados',
+      description: escopo === 'hoje'
+        ? 'Os pedidos mais recentes de hoje estão no topo.'
+        : 'A consulta do histórico foi atualizada.',
     });
   };
 
@@ -246,6 +263,46 @@ const ManagerOrders = () => {
     <DashboardLayout title="Pedidos" userType="manager">
       <div className="space-y-6">
         <DeliveryApprovalPanel />
+        <section className="rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant={escopo === 'hoje' ? 'default' : 'outline'}
+              className="min-h-14 justify-start rounded-xl text-base"
+              onClick={() => setEscopo('hoje')}
+            >
+              <CalendarDays className="mr-3 h-5 w-5" />
+              Pedidos de hoje
+            </Button>
+            <Button
+              type="button"
+              variant={escopo === 'historico' ? 'default' : 'outline'}
+              className="min-h-14 justify-start rounded-xl text-base"
+              onClick={() => setEscopo('historico')}
+            >
+              <History className="mr-3 h-5 w-5" />
+              Consultar dias anteriores
+            </Button>
+          </div>
+          {escopo === 'historico' && (
+            <div className="mt-4 rounded-xl border bg-muted/35 p-4">
+              <label htmlFor="data-historico-pedidos" className="mb-2 block text-sm font-semibold">
+                Filtrar por um dia
+              </label>
+              <input
+                id="data-historico-pedidos"
+                type="date"
+                value={dataHistorico}
+                max={new Date(Date.now() - 86400000).toISOString().slice(0, 10)}
+                onChange={(event) => setDataHistorico(event.target.value)}
+                className="min-h-12 w-full rounded-xl border border-input bg-background px-4 text-base sm:max-w-xs"
+              />
+              <p className="mt-2 text-sm text-muted-foreground">
+                Sem escolher uma data, são mostrados todos os dias anteriores, dos mais recentes para os mais antigos.
+              </p>
+            </div>
+          )}
+        </section>
         {!somAtivo ? (
           <Button
             type="button"
@@ -262,55 +319,59 @@ const ManagerOrders = () => {
             Alarme de novos pedidos ativo enquanto o painel estiver aberto
           </div>
         )}
-        <div className="grid gap-4 md:grid-cols-4">
+        {escopo === 'hoje' && <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">{pedidos.filter(p => p.status === 'pendente').length}</div>
-              <p className="text-sm text-muted-foreground">Pendentes</p>
+              <p className="text-sm text-muted-foreground">Pendentes carregados</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">{pedidos.filter(p => p.status === 'preparando').length}</div>
-              <p className="text-sm text-muted-foreground">Preparando</p>
+              <p className="text-sm text-muted-foreground">Preparando carregados</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">{pedidos.filter(p => p.status === 'saiu_entrega').length}</div>
-              <p className="text-sm text-muted-foreground">Em Entrega</p>
+              <p className="text-sm text-muted-foreground">Em entrega carregados</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">{pedidos.filter(p => p.status === 'entregue').length}</div>
-              <p className="text-sm text-muted-foreground">Entregues</p>
+              <p className="text-sm text-muted-foreground">Entregues carregados</p>
             </CardContent>
           </Card>
-        </div>
+        </div>}
 
         <div className="space-y-4">
-            {newOrdersCount > 0 && (
-              <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 p-3 rounded">
-                <div className="text-sm text-yellow-800">Você tem <strong>{newOrdersCount}</strong> novo(s) pedido(s).</div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void handleRefresh()} disabled={refreshing}>
-                    {refreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {refreshing ? 'Atualizando...' : 'Atualizar'}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => {
-                    // mark orders seen locally
-                    markOrdersSeen();
-                    // also mark related notifications as read
-                    try {
-                      notificacoes.filter(n => !n.lida && n.tipo === 'pedido').forEach(n => marcarComoLida(n.id));
-                    } catch (e) {}
-                  }}>
-                    Marcar como vistos
-                  </Button>
-                </div>
-              </div>
-            )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold">
+                {escopo === 'hoje' ? 'Pedidos de hoje' : 'Histórico de pedidos'}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {pedidos.length} pedido(s) carregado(s)
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => void handleRefresh()} disabled={refreshing}>
+              {refreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {refreshing ? 'Atualizando...' : 'Atualizar'}
+            </Button>
+          </div>
+          {pedidos.length === 0 && (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="font-semibold">
+                  {escopo === 'hoje'
+                    ? 'Nenhum pedido recebido hoje.'
+                    : 'Nenhum pedido encontrado nessa consulta.'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
           {pedidos.map((pedido) => {
             const telefoneCliente = getTelefoneCliente(pedido);
             
@@ -491,6 +552,19 @@ const ManagerOrders = () => {
               </Card>
             );
           })}
+          <div ref={infiniteScrollRef} className="flex min-h-16 items-center justify-center">
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Carregando mais pedidos...
+              </div>
+            )}
+            {!hasMore && pedidos.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                Todos os pedidos desta consulta foram carregados.
+              </span>
+            )}
+          </div>
         </div>
       </div>
       

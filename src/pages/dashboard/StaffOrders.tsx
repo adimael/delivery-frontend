@@ -2,11 +2,11 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { usePedidos } from "@/hooks/useSupabaseData";
+import { usePedidosPaginados } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
-import { useState } from "react";
-import { Receipt, MessageSquare, User, CheckCircle, MapPin } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Receipt, MessageSquare, User, CheckCircle, MapPin, CalendarDays, History, Loader2 } from "lucide-react";
 import { Pedido } from '@/hooks/useSupabaseData';
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
@@ -38,11 +38,37 @@ const statusColorMap: Record<string, string> = {
 type StatusPedido = 'pendente' | 'confirmado' | 'preparando' | 'pronto' | 'saiu_entrega' | 'entregue' | 'cancelado';
 
 const StaffOrders = () => {
-  const { pedidos, loading, atualizarStatusPedido, refreshPedidos } = usePedidos();
+  const [escopo, setEscopo] = useState<'hoje' | 'historico'>('hoje');
+  const [dataHistorico, setDataHistorico] = useState('');
+  const {
+    pedidos,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    atualizarStatusPedido,
+    refreshPedidos,
+  } = usePedidosPaginados(
+    escopo,
+    escopo === 'historico' && dataHistorico ? dataHistorico : null,
+  );
   const { configuracao } = useEstabelecimento();
   const { toast } = useToast();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const infiniteScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const alvo = infiniteScrollRef.current;
+    if (!alvo || !hasMore) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && !loadingMore) {
+        void loadMore();
+      }
+    }, { rootMargin: '500px 0px' });
+    observer.observe(alvo);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, loadingMore]);
 
   if (loading) {
     return (
@@ -216,6 +242,41 @@ const StaffOrders = () => {
     <DashboardLayout title="Gerenciar Pedidos" userType="staff">
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Pedidos</h1>
+        <section className="rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              variant={escopo === 'hoje' ? 'default' : 'outline'}
+              className="min-h-14 justify-start rounded-xl text-base"
+              onClick={() => setEscopo('hoje')}
+            >
+              <CalendarDays className="mr-3 h-5 w-5" />
+              Pedidos de hoje
+            </Button>
+            <Button
+              variant={escopo === 'historico' ? 'default' : 'outline'}
+              className="min-h-14 justify-start rounded-xl text-base"
+              onClick={() => setEscopo('historico')}
+            >
+              <History className="mr-3 h-5 w-5" />
+              Consultar dias anteriores
+            </Button>
+          </div>
+          {escopo === 'historico' && (
+            <div className="mt-4 rounded-xl border bg-muted/35 p-4">
+              <label htmlFor="data-historico-funcionario" className="mb-2 block text-sm font-semibold">
+                Filtrar por um dia
+              </label>
+              <input
+                id="data-historico-funcionario"
+                type="date"
+                value={dataHistorico}
+                max={new Date(Date.now() - 86400000).toISOString().slice(0, 10)}
+                onChange={(event) => setDataHistorico(event.target.value)}
+                className="min-h-12 w-full rounded-xl border border-input bg-background px-4 text-base sm:max-w-xs"
+              />
+            </div>
+          )}
+        </section>
         
         {pedidos.length === 0 ? (
           <Card>
@@ -439,6 +500,19 @@ const StaffOrders = () => {
                 </Card>
               );
             })}
+            <div ref={infiniteScrollRef} className="flex min-h-16 items-center justify-center">
+              {loadingMore && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Carregando mais pedidos...
+                </div>
+              )}
+              {!hasMore && pedidos.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Todos os pedidos desta consulta foram carregados.
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>

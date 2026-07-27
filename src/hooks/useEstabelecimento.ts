@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/api';
 import { startSmartPolling } from '@/lib/smartPolling';
+import {
+  isRealtimeConnected,
+  subscribeRealtime,
+  subscribeRealtimeState,
+} from '@/lib/realtime';
 
 export interface ConfiguracaoEstabelecimento {
   id: string;
@@ -145,6 +150,7 @@ const updateMetaTags = (config: ConfiguracaoEstabelecimento): void => {
 let configuracaoCompartilhada = carregarConfiguracaoLocal();
 let requisicaoAtual: Promise<void> | null = null;
 let pararPolling: (() => void) | null = null;
+let pararRealtime: (() => void) | null = null;
 const assinantes = new Set<(config: ConfiguracaoEstabelecimento) => void>();
 
 const publicarConfiguracao = (config: ConfiguracaoEstabelecimento): void => {
@@ -196,9 +202,21 @@ export const useEstabelecimento = () => {
     assinantes.add(atualizar);
     void fetchConfiguracao();
     if (!pararPolling) {
-      pararPolling = startSmartPolling(buscarConfiguracaoCompartilhada, {
-        activeInterval: 5_000,
-        hiddenInterval: 30_000,
+      const pararEvento = subscribeRealtime('delivery.configuration.updated', () => {
+        void buscarConfiguracaoCompartilhada();
+      });
+      const pararEstado = subscribeRealtimeState((online) => {
+        if (online) void buscarConfiguracaoCompartilhada();
+      });
+      pararRealtime = () => {
+        pararEvento();
+        pararEstado();
+      };
+      pararPolling = startSmartPolling(() => (
+        isRealtimeConnected() ? undefined : buscarConfiguracaoCompartilhada()
+      ), {
+        activeInterval: 30_000,
+        hiddenInterval: 2 * 60_000,
         maxInterval: 2 * 60_000,
       });
     }
@@ -208,6 +226,8 @@ export const useEstabelecimento = () => {
       if (assinantes.size === 0 && pararPolling) {
         pararPolling();
         pararPolling = null;
+        pararRealtime?.();
+        pararRealtime = null;
       }
     };
   }, []);

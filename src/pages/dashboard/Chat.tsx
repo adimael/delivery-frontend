@@ -7,6 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/api';
 import { startSmartPolling } from '@/lib/smartPolling';
+import {
+  isRealtimeConnected,
+  subscribeRealtime,
+  subscribeRealtimeState,
+} from '@/lib/realtime';
 import { Headphones, MessageCircle, Send, User } from 'lucide-react';
 
 interface Conversa {
@@ -111,11 +116,25 @@ const Chat = ({ userType }: ChatProps) => {
   useEffect(() => {
     if (!user) return;
     void carregarConversas();
-    return startSmartPolling(carregarConversas, {
-      activeInterval: 8_000,
-      hiddenInterval: 60_000,
+    const unsubscribeEvent = subscribeRealtime('delivery.chat.updated', () => {
+      void carregarConversas();
+    });
+    const unsubscribeState = subscribeRealtimeState((online) => {
+      if (online) void carregarConversas();
+    });
+    const stopFallback = startSmartPolling(() => (
+      isRealtimeConnected() ? undefined : carregarConversas()
+    ), {
+      activeInterval: 30_000,
+      hiddenInterval: 2 * 60_000,
       maxInterval: 5 * 60_000,
     });
+
+    return () => {
+      unsubscribeEvent();
+      unsubscribeState();
+      stopFallback();
+    };
   }, [carregarConversas, user]);
 
   useEffect(() => {

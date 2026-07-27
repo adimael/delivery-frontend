@@ -92,6 +92,7 @@ const requiresAuthentication = (path: string, method: string): boolean => {
     '/perfis',
     '/enderecos',
     '/chat',
+    '/realtime',
   ];
 
   if (protectedPrefixes.some((prefix) => path === prefix || path.startsWith(prefix))) {
