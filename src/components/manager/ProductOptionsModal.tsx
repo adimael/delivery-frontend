@@ -260,7 +260,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
         title: "Opção excluída",
         description: "A opção foi excluída com sucesso.",
       });
-      refetch();
+      await Promise.all([refetch(), loadProdutoOpcoes()]);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -632,9 +632,10 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2">
-                            {opcoesCategoria.map(opcao => (
-                              opcao.opcao_id && (
-                                <div key={opcao.opcao_id} className="flex justify-between items-center p-2 border rounded">
+                            {opcoesCategoria.some(opcao => opcao.opcao_id) ? (
+                              opcoesCategoria.map(opcao => (
+                                opcao.opcao_id && (
+                                  <div key={opcao.opcao_id} className="flex justify-between items-center p-2 border rounded">
                                   <div className="flex items-center gap-2">
                                     <span>{opcao.opcao_nome}</span>
                                     {opcao.opcao_preco_adicional > 0 && (
@@ -646,9 +647,15 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                                       {opcao.opcao_disponivel ? "Disponível" : "Indisponível"}
                                     </Badge>
                                   </div>
-                                </div>
-                              )
-                            ))}
+                                  </div>
+                                )
+                              ))
+                            ) : (
+                              <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                                Categoria vinculada, mas ainda sem adicionais. Cadastre um adicional
+                                na etapa “Adicionais”.
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
