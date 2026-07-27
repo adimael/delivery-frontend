@@ -403,7 +403,7 @@ export const usePedidosPaginados = (
   useEffect(() => {
     if (escopo !== 'hoje') return undefined;
     const unsubscribeEvent = subscribeRealtime('delivery.orders.updated', () => {
-      setCursor(null);
+      cursorRef.current = null;
       void carregar(true);
     });
     const unsubscribeState = subscribeRealtimeState((online) => {
