@@ -99,45 +99,69 @@ export const useProductOptions = ({
   const [opcoes, setOpcoes] = useState<OpcaoProduto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchCategorias = async () => {
-    try {
-      if (!productId) {
-        setCategorias([]);
-        return;
-      }
-      const data = await apiRequest(
-        `/admin/opcoes/categorias?produto_uuid=${encodeURIComponent(productId)}`,
-      );
-      setCategorias(Array.isArray(data) ? data.map(normalizarCategoria) : []);
-    } catch {
+  const carregarDadosProduto = async () => {
+    if (!productId) {
       setCategorias([]);
-    }
-  };
-
-  const fetchOpcoes = async () => {
-    try {
-      if (!productId) {
-        setOpcoes([]);
-        return;
-      }
-      const categoriasComOpcoes = await apiRequest(
-        `/admin/opcoes/categorias?produto_uuid=${encodeURIComponent(productId)}`,
-      );
-      setOpcoes((Array.isArray(categoriasComOpcoes) ? categoriasComOpcoes : [])
-        .flatMap((categoria: any) =>
-          (categoria.opcoes ?? []).map((opcao: any) =>
-            normalizarOpcao(opcao, String(categoria.id ?? categoria.uuid ?? '')),
-          ),
-        ));
-    } catch {
       setOpcoes([]);
+      return;
     }
+
+    const data = await apiRequest(`/produtos/${encodeURIComponent(productId)}/opcoes`);
+    const vinculos = Array.isArray(data) ? data.map(normalizarVinculo) : [];
+    const categoriasUnicas = new Map<string, CategoriaOpcao>();
+    const opcoesProduto: OpcaoProduto[] = [];
+
+    vinculos.forEach((item) => {
+      if (!categoriasUnicas.has(item.categoria_id)) {
+        categoriasUnicas.set(item.categoria_id, normalizarCategoria({
+          id: item.categoria_id,
+          produto_uuid: productId,
+          nome: item.categoria_nome,
+          descricao: item.categoria_descricao,
+          minimo: item.categoria_minimo,
+          maximo: item.categoria_maximo,
+          tipo_selecao: item.categoria_tipo_selecao,
+          maximo_por_opcao: item.categoria_maximo_por_opcao,
+          mostrar_preco: item.categoria_mostrar_preco,
+          ordem: item.categoria_ordem,
+          criado_em: '',
+        }));
+      }
+      if (item.opcao_id) {
+        opcoesProduto.push(normalizarOpcao({
+          id: item.opcao_id,
+          categoria_id: item.categoria_id,
+          nome: item.opcao_nome,
+          preco_adicional: item.opcao_preco_adicional,
+          disponivel: item.opcao_disponivel,
+          ordem: item.opcao_ordem,
+          produto_adicional_uuid: item.opcao_produto_adicional_id,
+          produto_adicional_nome: item.opcao_produto_adicional_nome,
+          criado_em: '',
+        }));
+      }
+    });
+
+    setCategorias(
+      Array.from(categoriasUnicas.values()).sort(
+        (a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome),
+      ),
+    );
+    setOpcoes(opcoesProduto.sort(
+      (a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome),
+    ));
   };
 
   const refetch = async () => {
     setLoading(true);
-    await Promise.all([fetchCategorias(), fetchOpcoes()]);
-    setLoading(false);
+    try {
+      await carregarDadosProduto();
+    } catch {
+      setCategorias([]);
+      setOpcoes([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
