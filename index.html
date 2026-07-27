@@ -3,16 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meu Delivery — Cardápio e pedidos online</title>
-    <meta name="description" content="Faça seu pedido pelo cardápio digital, escolha entrega ou retirada e acompanhe o preparo." />
-    <meta name="author" content="Meu Delivery" />
+    <title>Deliciê — Cardápio e pedidos online</title>
+    <meta name="description" content="Faça seu pedido pelo cardápio digital da Deliciê, escolha entrega ou retirada e acompanhe o preparo." />
+    <meta name="author" content="Deliciê" />
     <meta name="theme-color" content="#3b82f6">
+    <link rel="canonical" href="https://delivery-frontend-lac.vercel.app/" />
+    <link rel="icon" type="image/png" href="https://i.ibb.co/gbJGSbTx/logo.png" />
 
-    <meta property="og:title" content="Meu Delivery — Cardápio e pedidos online" />
-    <meta property="og:description" content="Escolha seus produtos, personalize o pedido e receba em casa." />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="Deliciê" />
+    <meta property="og:title" content="Deliciê — Cardápio e pedidos online" />
+    <meta property="og:description" content="Escolha seus produtos, personalize o pedido e receba em casa ou retire no local." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://delivery-frontend-lac.vercel.app/" />
+    <meta property="og:image" content="https://i.ibb.co/gbJGSbTx/logo.png" />
+    <meta property="og:image:secure_url" content="https://i.ibb.co/gbJGSbTx/logo.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Logo da Deliciê" />
 
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Deliciê — Cardápio e pedidos online" />
+    <meta name="twitter:description" content="Escolha seus produtos, personalize o pedido e receba em casa ou retire no local." />
+    <meta name="twitter:image" content="https://i.ibb.co/gbJGSbTx/logo.png" />
+    <meta name="twitter:image:alt" content="Logo da Deliciê" />
     
     <!-- Preload theme script to eliminate flash of default colors and names -->
     <script>
@@ -134,19 +147,10 @@
       // Run immediately to prevent flash of default content
       const themeApplied = applyStoredTheme();
       
-      // If theme was not applied (no stored config), keep the generic title
+      // Sem configuração local, preserve os metadados estáticos para evitar
+      // conteúdo genérico durante a primeira visita e para previews sociais.
       if (!themeApplied) {
-        document.title = "Plataforma";
-        const ogTitleMeta = document.querySelector('meta[property="og:title"]');
-        if (ogTitleMeta) {
-          ogTitleMeta.setAttribute('content', 'Plataforma');
-        }
-        
-        // Remove favicon if no custom one is set
-        const favicon = document.querySelector('link[rel="icon"]');
-        if (favicon) {
-          favicon.remove();
-        }
+        document.title = "Deliciê — Cardápio e pedidos online";
       }
       
       // Also run after a short delay to ensure it's applied
