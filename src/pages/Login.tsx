@@ -115,7 +115,7 @@ export default function Login() {
   return (
     <main className="delivery-auth-page">
       <section className="delivery-auth-showcase" aria-label={`Acesso ao ${platformName}`}>
-        <button type="button" className="delivery-auth-back" onClick={() => navigate(-1)}>
+        <button type="button" className="delivery-auth-back" onClick={() => navigate("/", { replace: true })}>
           <ArrowLeft />
           <span>Voltar ao cardápio</span>
         </button>
@@ -133,7 +133,7 @@ export default function Login() {
 
       <section className="delivery-auth-panel">
         <div className="delivery-auth-mobile-head">
-          <button type="button" onClick={() => navigate(-1)} aria-label="Voltar ao cardápio"><ArrowLeft /></button>
+          <button type="button" onClick={() => navigate("/", { replace: true })} aria-label="Voltar ao cardápio"><ArrowLeft /></button>
           <Logo />
         </div>
         <div className="delivery-auth-card">

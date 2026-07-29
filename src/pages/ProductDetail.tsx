@@ -120,7 +120,7 @@ const ProductDetail = () => {
         <div className="bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
             <h1 className="text-2xl font-semibold mb-4">Produto não encontrado</h1>
-            <Button onClick={() => navigate(-1)}>Voltar</Button>
+            <Button onClick={() => navigate("/")}>Voltar ao cardápio</Button>
           </div>
         </div>
       </MainLayout>
@@ -209,7 +209,7 @@ const ProductDetail = () => {
         <div className="delivery-product-detail">
         <Button 
           variant="ghost" 
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/")}
           className="delivery-detail-back"
         >
           <span aria-hidden="true">←</span>
