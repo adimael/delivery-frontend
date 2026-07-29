@@ -106,8 +106,50 @@ export const useProductOptions = ({
       return;
     }
 
-    const data = await apiRequest(`/produtos/${encodeURIComponent(productId)}/opcoes`);
-    const vinculos = Array.isArray(data) ? data.map(normalizarVinculo) : [];
+    const data = await apiRequest(
+      `/admin/opcoes/categorias?produto_uuid=${encodeURIComponent(productId)}`,
+    );
+    const categoriasAdmin = Array.isArray(data) ? data : [];
+    const vinculos = categoriasAdmin.flatMap((categoria: any) => {
+      const categoriaNormalizada = normalizarCategoria(categoria);
+      const opcoesCategoria = Array.isArray(categoria.opcoes) ? categoria.opcoes : [];
+
+      if (opcoesCategoria.length === 0) {
+        return [{
+          categoria_id: categoriaNormalizada.id,
+          categoria_nome: categoriaNormalizada.nome,
+          categoria_descricao: categoriaNormalizada.descricao,
+          categoria_minimo: categoriaNormalizada.minimo,
+          categoria_maximo: categoriaNormalizada.maximo,
+          categoria_tipo_selecao: categoriaNormalizada.tipo_selecao,
+          categoria_maximo_por_opcao: categoriaNormalizada.maximo_por_opcao,
+          categoria_mostrar_preco: categoriaNormalizada.mostrar_preco,
+          categoria_ordem: categoriaNormalizada.ordem,
+        } as ProdutoOpcaoCompleta];
+      }
+
+      return opcoesCategoria.map((opcao: any) => {
+        const opcaoNormalizada = normalizarOpcao(opcao, categoriaNormalizada.id);
+        return {
+          categoria_id: categoriaNormalizada.id,
+          categoria_nome: categoriaNormalizada.nome,
+          categoria_descricao: categoriaNormalizada.descricao,
+          categoria_minimo: categoriaNormalizada.minimo,
+          categoria_maximo: categoriaNormalizada.maximo,
+          categoria_tipo_selecao: categoriaNormalizada.tipo_selecao,
+          categoria_maximo_por_opcao: categoriaNormalizada.maximo_por_opcao,
+          categoria_mostrar_preco: categoriaNormalizada.mostrar_preco,
+          categoria_ordem: categoriaNormalizada.ordem,
+          opcao_id: opcaoNormalizada.id,
+          opcao_nome: opcaoNormalizada.nome,
+          opcao_preco_adicional: opcaoNormalizada.preco_adicional,
+          opcao_disponivel: opcaoNormalizada.disponivel,
+          opcao_ordem: opcaoNormalizada.ordem,
+          opcao_produto_adicional_id: opcaoNormalizada.produto_adicional_uuid,
+          opcao_produto_adicional_nome: opcaoNormalizada.produto_adicional_nome,
+        } as ProdutoOpcaoCompleta;
+      });
+    });
     const categoriasUnicas = new Map<string, CategoriaOpcao>();
     const opcoesProduto: OpcaoProduto[] = [];
 

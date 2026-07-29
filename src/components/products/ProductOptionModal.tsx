@@ -265,8 +265,9 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
                   return (
                     <div
                       key={option.id}
-                      className={`delivery-option-row ${isSelected || amount > 0 ? "is-selected" : ""} ${!option.disponivel ? "opacity-45" : ""} ${category.tipo !== "quantidade" && option.disponivel ? "cursor-pointer" : ""}`}
-                      role={category.tipo !== "quantidade" ? "button" : undefined}
+                      className={`delivery-option-row ${isSelected || amount > 0 ? "is-selected" : ""} ${!option.disponivel ? "cursor-not-allowed border-dashed bg-muted/60 opacity-60" : ""} ${category.tipo !== "quantidade" && option.disponivel ? "cursor-pointer" : ""}`}
+                      role={category.tipo !== "quantidade" && option.disponivel ? "button" : undefined}
+                      aria-disabled={!option.disponivel}
                       tabIndex={category.tipo !== "quantidade" && option.disponivel ? 0 : undefined}
                       onClick={() => {
                         if (category.tipo !== "quantidade" && option.disponivel) {
@@ -284,7 +285,15 @@ export const ProductOptionModal = ({ product, open, onClose, onAddToCart }: Prop
                         }
                       }}
                     >
-                      <div><strong className="block">{option.nome}</strong>{option.produtoAdicionalNome && <small className="text-gray-500">Produto adicional</small>}</div>
+                      <div>
+                        <strong className="block">{option.nome}</strong>
+                        {option.produtoAdicionalNome && <small className="block text-gray-500">Produto adicional</small>}
+                        {!option.disponivel && (
+                          <span className="mt-1 inline-flex rounded-full border border-current px-2.5 py-1 text-xs font-black">
+                            Indisponível
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3">
                         {category.mostrarPreco && option.preco > 0 && <b className="delivery-theme-accent">+{money(option.preco)}</b>}
                         {category.tipo === "quantidade" ? (
