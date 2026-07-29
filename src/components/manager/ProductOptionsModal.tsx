@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type RefObject } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import {
   Layers3,
   PackagePlus,
   Plus,
+  Search,
   Settings2,
   Trash2,
 } from "lucide-react";
@@ -37,6 +38,13 @@ interface ProductOptionsModalProps {
   produtoId?: string;
   produtoNome?: string;
 }
+
+const normalizarBusca = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
 
 const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: ProductOptionsModalProps) => {
   const { toast } = useToast();
@@ -73,6 +81,11 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
   const [draggedOpcaoId, setDraggedOpcaoId] = useState<string | null>(null);
   const [draggedVinculoId, setDraggedVinculoId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [buscaCategorias, setBuscaCategorias] = useState("");
+  const [buscaOpcoes, setBuscaOpcoes] = useState("");
+  const [buscaProduto, setBuscaProduto] = useState("");
+  const categoriaFormRef = useRef<HTMLDivElement>(null);
+  const opcaoFormRef = useRef<HTMLDivElement>(null);
 
   const [categoriaForm, setCategoriaForm] = useState({
     nome: '',
@@ -97,8 +110,22 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
   useEffect(() => {
     if (open && produtoId) {
       void loadProdutoOpcoes();
+      return;
     }
+    setBuscaCategorias("");
+    setBuscaOpcoes("");
+    setBuscaProduto("");
   }, [open, produtoId]);
+
+  const mostrarFormulario = (
+    setter: (visible: boolean) => void,
+    ref: RefObject<HTMLDivElement>,
+  ) => {
+    setter(true);
+    window.requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   const loadProdutoOpcoes = async () => {
     if (!produtoId) return;
@@ -338,6 +365,27 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
   const categoriasVinculadas = produtoOpcoes.map(op => op.categoria_id);
   const categoriasVinculadasOrdenadas = Array.from(new Set(categoriasVinculadas));
   const categoriasComOpcoes = new Set(opcoes.map((opcao) => opcao.categoria_id));
+  const termoCategorias = normalizarBusca(buscaCategorias);
+  const termoOpcoes = normalizarBusca(buscaOpcoes);
+  const termoProduto = normalizarBusca(buscaProduto);
+  const categoriasFiltradas = categorias.filter((categoria) =>
+    normalizarBusca(`${categoria.nome} ${categoria.descricao}`).includes(termoCategorias),
+  );
+  const opcoesFiltradas = opcoes.filter((opcao) => {
+    const categoria = categorias.find((item) => item.id === opcao.categoria_id);
+    return normalizarBusca(
+      `${opcao.nome} ${categoria?.nome} ${opcao.produto_adicional_nome}`,
+    ).includes(termoOpcoes);
+  });
+  const categoriasVinculadasFiltradas = categoriasVinculadasOrdenadas.filter((categoriaId) => {
+    const categoria = produtoOpcoes.find((item) => item.categoria_id === categoriaId);
+    const opcoesCategoria = produtoOpcoes.filter((item) => item.categoria_id === categoriaId);
+    return normalizarBusca(
+      `${categoria?.categoria_nome} ${categoria?.categoria_descricao} ${
+        opcoesCategoria.map((item) => item.opcao_nome).join(" ")
+      }`,
+    ).includes(termoProduto);
+  });
   const formatPrice = (value: unknown) =>
     Number(value || 0).toFixed(2).replace(".", ",");
 
@@ -503,10 +551,10 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
             {(activeTab === "categorias" || activeTab === "opcoes") && (
               <Button onClick={() => {
                 if (activeTab === "categorias") {
-                  setShowCategoriaForm(true);
+                  mostrarFormulario(setShowCategoriaForm, categoriaFormRef);
                   return;
                 }
-                setShowOpcaoForm(true);
+                mostrarFormulario(setShowOpcaoForm, opcaoFormRef);
               }}>
                 <Plus className="mr-2 h-4 w-4" />
                 {activeTab === "categorias" ? "Nova categoria" : "Nova opção"}
@@ -516,6 +564,16 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
 
           <TabsContent value="produto" className="space-y-4">
             <div className="space-y-4">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={buscaProduto}
+                  onChange={(event) => setBuscaProduto(event.target.value)}
+                  placeholder="Pesquisar categoria ou adicional neste produto"
+                  aria-label="Pesquisar nas opções vinculadas ao produto"
+                  className="h-12 pl-12 text-base"
+                />
+              </div>
               <Card className="options-link-card">
                 <CardHeader>
                   <CardTitle className="text-base">Adicionar opções a este produto</CardTitle>
@@ -563,9 +621,20 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {categoriasVinculadasOrdenadas.map((categoriaId, indice) => {
+                  {categoriasVinculadasFiltradas.map((categoriaId) => {
+                    const indice = categoriasVinculadasOrdenadas.indexOf(categoriaId);
                     const categoria = produtoOpcoes.find(op => op.categoria_id === categoriaId);
-                    const opcoesCategoria = produtoOpcoes.filter(op => op.categoria_id === categoriaId);
+                    const categoriaCorresponde = normalizarBusca(
+                      `${categoria?.categoria_nome} ${categoria?.categoria_descricao}`,
+                    ).includes(termoProduto);
+                    const opcoesCategoria = produtoOpcoes.filter(op =>
+                      op.categoria_id === categoriaId
+                      && (
+                        termoProduto === ""
+                        || categoriaCorresponde
+                        || normalizarBusca(op.opcao_nome).includes(termoProduto)
+                      ),
+                    );
                     
                     return (
                       <Card
@@ -661,6 +730,13 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                       </Card>
                     );
                   })}
+                  {termoProduto !== "" && categoriasVinculadasFiltradas.length === 0 && (
+                    <div className="options-empty">
+                      <Search />
+                      <strong>Nenhum item encontrado</strong>
+                      <p>Tente pesquisar pelo nome da categoria ou do adicional.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -669,7 +745,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
 
           <TabsContent value="categorias" className="space-y-4">
             {showCategoriaForm && (
-              <Card>
+              <Card ref={categoriaFormRef}>
                 <CardHeader>
                   <CardTitle>{editingCategoria ? 'Editar' : 'Nova'} Categoria</CardTitle>
                 </CardHeader>
@@ -781,6 +857,17 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
               </Card>
             )}
 
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={buscaCategorias}
+                onChange={(event) => setBuscaCategorias(event.target.value)}
+                placeholder="Pesquisar categorias"
+                aria-label="Pesquisar categorias"
+                className="h-12 pl-12 text-base"
+              />
+            </div>
+
             <div className="grid gap-4">
               {!loading && categorias.length === 0 && (
                 <div className="options-empty">
@@ -789,7 +876,9 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                   <p>Exemplos: Escolha o tamanho, Adicionais, Talheres ou Escolha o molho.</p>
                 </div>
               )}
-              {categorias.map((categoria, indice) => (
+              {categoriasFiltradas.map((categoria) => {
+                const indice = categorias.findIndex((item) => item.id === categoria.id);
+                return (
                 <Card
                   key={categoria.id}
                   className={draggedCategoriaId === categoria.id ? "opacity-50 ring-2 ring-primary" : ""}
@@ -861,7 +950,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                               mostrar_preco: categoria.mostrar_preco,
                               ordem: categoria.ordem || 0
                             });
-                            setShowCategoriaForm(true);
+                            mostrarFormulario(setShowCategoriaForm, categoriaFormRef);
                           }}
                         >
                           <Edit className="h-3 w-3" />
@@ -877,13 +966,21 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
+              {!loading && termoCategorias !== "" && categoriasFiltradas.length === 0 && (
+                <div className="options-empty">
+                  <Search />
+                  <strong>Nenhuma categoria encontrada</strong>
+                  <p>Verifique o termo informado e tente novamente.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="opcoes" className="space-y-4">
             {showOpcaoForm && (
-              <Card>
+              <Card ref={opcaoFormRef}>
                 <CardHeader>
                   <CardTitle>{editingOpcao ? 'Editar' : 'Nova'} Opção</CardTitle>
                 </CardHeader>
@@ -983,6 +1080,17 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
               </Card>
             )}
 
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={buscaOpcoes}
+                onChange={(event) => setBuscaOpcoes(event.target.value)}
+                placeholder="Pesquisar adicionais ou categorias"
+                aria-label="Pesquisar adicionais"
+                className="h-12 pl-12 text-base"
+              />
+            </div>
+
             <div className="grid gap-4">
               {!loading && opcoes.length === 0 && (
                 <div className="options-empty">
@@ -991,7 +1099,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                   <p>Crie opções como Bacon, Catupiry, Sem talher ou Porção extra.</p>
                 </div>
               )}
-              {opcoes.map((opcao) => {
+              {opcoesFiltradas.map((opcao) => {
                 const categoria = categorias.find(c => c.id === opcao.categoria_id);
                 const opcoesIrmãs = opcoesDaCategoria(opcao.categoria_id);
                 const indice = opcoesIrmãs.findIndex(item => item.id === opcao.id);
@@ -1067,7 +1175,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                               disponivel: opcao.disponivel,
                               ordem: opcao.ordem || 0
                               });
-                              setShowOpcaoForm(true);
+                              mostrarFormulario(setShowOpcaoForm, opcaoFormRef);
                             }}
                           >
                             <Edit className="h-3 w-3" />
@@ -1085,6 +1193,13 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
                   </Card>
                 );
               })}
+              {!loading && termoOpcoes !== "" && opcoesFiltradas.length === 0 && (
+                <div className="options-empty">
+                  <Search />
+                  <strong>Nenhum adicional encontrado</strong>
+                  <p>Pesquise pelo nome do adicional ou da categoria.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

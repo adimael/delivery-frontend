@@ -1,6 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { confirmAction } from "@/components/ui/confirmation-host";
 import { useProductVariations, ProductVariation } from "@/hooks/useProductVariations";
@@ -19,6 +25,13 @@ interface ProductVariationsModalProps {
   onOpenChange: (open: boolean) => void;
   produto?: { id: string; nome: string } | null;
 }
+
+const normalizarBusca = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
 
 const ProductVariationsModal = ({ open, onOpenChange, produto }: ProductVariationsModalProps) => {
   const { toast } = useToast();
@@ -36,6 +49,7 @@ const ProductVariationsModal = ({ open, onOpenChange, produto }: ProductVariatio
   const [bulkInput, setBulkInput] = useState('');
   const [editingVariation, setEditingVariation] = useState<ProductVariation | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [editForm, setEditForm] = useState({
     nome: '',
@@ -47,11 +61,17 @@ const ProductVariationsModal = ({ open, onOpenChange, produto }: ProductVariatio
   useEffect(() => {
     if (open) {
       refetch();
+      return;
     }
+    setSearchTerm("");
   }, [open]);
 
   const productVariations = produto?.id ? getVariationsByProduct(produto.id) : [];
-  const variationTypes = [...new Set(productVariations.map(v => v.tipo_variacao))];
+  const normalizedSearch = normalizarBusca(searchTerm);
+  const filteredVariations = productVariations.filter((variation) =>
+    normalizarBusca(`${variation.nome} ${variation.tipo_variacao}`).includes(normalizedSearch),
+  );
+  const variationTypes = [...new Set(filteredVariations.map(v => v.tipo_variacao))];
 
   const handleCreateBulkVariations = async () => {
     if (!produto?.id || !newVariationType || !bulkInput) return;
@@ -155,8 +175,26 @@ const ProductVariationsModal = ({ open, onOpenChange, produto }: ProductVariatio
           </TabsList>
 
           <TabsContent value="current" className="space-y-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Pesquisar variação ou tipo"
+                aria-label="Pesquisar variações"
+                className="h-12 pl-12 text-base"
+              />
+            </div>
             {variationTypes.length === 0 ? (
-              <p className="text-gray-500">Nenhuma variação encontrada para este produto.</p>
+              <div className="options-empty">
+                <Search />
+                <strong>Nenhuma variação encontrada</strong>
+                <p>
+                  {normalizedSearch
+                    ? "Verifique o termo informado e tente novamente."
+                    : "Este produto ainda não possui variações."}
+                </p>
+              </div>
             ) : (
               <div className="space-y-6">
                 {variationTypes.map(type => (
@@ -166,7 +204,7 @@ const ProductVariationsModal = ({ open, onOpenChange, produto }: ProductVariatio
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-3">
-                        {productVariations
+                        {filteredVariations
                           .filter(v => v.tipo_variacao === type)
                           .map(variation => (
                             <div key={variation.id} className="flex items-center justify-between p-3 border rounded-lg">
@@ -260,6 +298,9 @@ const ProductVariationsModal = ({ open, onOpenChange, produto }: ProductVariatio
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>Editar Variação</DialogTitle>
+                <DialogDescription>
+                  Atualize os dados da variação selecionada e salve as alterações.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
