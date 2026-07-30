@@ -1,50 +1,43 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, ChevronRight, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/common/Logo";
-import { ArrowLeft } from "lucide-react";
 import { apiRequest } from "@/lib/api";
+import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { configuracao } = useEstabelecimento();
+  const platformName = configuracao?.nome_plataforma || "Delivery";
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira seu e-mail.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleResetPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return;
     setLoading(true);
-
     try {
-      await apiRequest('/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
+      await apiRequest("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: normalizedEmail }),
       });
+      setEmail(normalizedEmail);
       setEmailSent(true);
       toast({
         title: "Solicitação recebida",
-        description: "Se o e-mail estiver cadastrado, você receberá as instruções.",
+        description: "Se houver uma conta com esse e-mail, as instruções serão enviadas.",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao enviar e-mail de recuperação.",
+        title: "Não foi possível solicitar agora",
+        description: error instanceof Error ? error.message : "Tente novamente em alguns instantes.",
         variant: "destructive",
       });
     } finally {
@@ -53,80 +46,84 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-between items-center mb-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/login")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
-            <div className="flex justify-center flex-1">
-              <Logo />
-            </div>
-            <div className="w-16"></div>
-          </div>
-          <CardTitle className="text-2xl">Esqueceu sua senha?</CardTitle>
-          <CardDescription>
-            {emailSent 
-              ? "E-mail de recuperação enviado" 
-              : "Digite seu e-mail para receber instruções de recuperação"
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <main className="delivery-auth-page">
+      <section className="delivery-auth-showcase" aria-label={`Recuperação de acesso ao ${platformName}`}>
+        <button type="button" className="delivery-auth-back" onClick={() => navigate("/login", { replace: true })}>
+          <ArrowLeft />
+          <span>Voltar ao login</span>
+        </button>
+        <div className="delivery-auth-brand"><Logo /></div>
+        <div className="delivery-auth-message">
+          <span className="delivery-auth-kicker">Recuperação segura</span>
+          <h1>Vamos ajudar você a voltar.</h1>
+          <p>Informe seu e-mail e enviaremos as orientações para definir uma nova senha com segurança.</p>
+        </div>
+        <div className="delivery-auth-benefits">
+          <span><ShieldCheck /> Link protegido e temporário</span>
+          <span><Mail /> Instruções por e-mail</span>
+        </div>
+      </section>
+
+      <section className="delivery-auth-panel">
+        <div className="delivery-auth-mobile-head">
+          <button type="button" onClick={() => navigate("/login", { replace: true })} aria-label="Voltar ao login"><ArrowLeft /></button>
+          <Logo />
+        </div>
+        <div className="delivery-auth-card">
+          <header>
+            <span className="delivery-auth-kicker">Recuperar acesso</span>
+            <h2>{emailSent ? "Confira seu e-mail" : "Esqueceu sua senha?"}</h2>
+            <p>
+              {emailSent
+                ? "Por segurança, mostramos a mesma confirmação para qualquer endereço informado."
+                : "Digite o e-mail usado na sua conta."}
+            </p>
+          </header>
+
           {!emailSent ? (
-            <form onSubmit={handleResetPassword}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
+            <form className="delivery-auth-form" onSubmit={handleResetPassword}>
+              <div>
+                <Label htmlFor="recovery-email">E-mail</Label>
+                <div className="delivery-auth-input">
+                  <Mail />
+                  <Input
+                    id="recovery-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     placeholder="seu@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     disabled={loading}
+                    required
                   />
                 </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full bg-kumekume-orange hover:bg-orange-600"
-                  disabled={loading}
-                >
-                  {loading ? "Enviando..." : "Enviar instruções"}
-                </Button>
               </div>
+              <Button type="submit" className="delivery-auth-submit btn-primary" disabled={loading || !email.trim()}>
+                {loading
+                  ? <><Loader2 className="animate-spin" /> Enviando...</>
+                  : <>Enviar instruções <ChevronRight /></>}
+              </Button>
             </form>
           ) : (
-            <div className="text-center space-y-4">
-              <p className="text-gray-600">
-                Enviamos um e-mail com instruções para redefinir sua senha para <strong>{email}</strong>
+            <div className="delivery-auth-success">
+              <CheckCircle2 />
+              <strong>Solicitação registrada</strong>
+              <p>
+                Se <b>{email}</b> estiver cadastrado, você receberá um link temporário para alterar sua senha.
               </p>
-              <Button 
-                onClick={() => setEmailSent(false)}
-                variant="outline"
-                className="w-full"
-              >
-                Enviar para outro e-mail
+              <Button type="button" variant="outline" onClick={() => setEmailSent(false)}>
+                Informar outro e-mail
               </Button>
             </div>
           )}
-          
-          <div className="mt-6 text-center">
-            <Link to="/login" className="text-kumekume-orange hover:underline">
-              Lembrou da senha? Faça login
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+
+          <p className="delivery-auth-terms">
+            <Link to="/login">Lembrou da senha? Voltar ao login</Link>
+          </p>
+        </div>
+      </section>
+    </main>
   );
 };
 

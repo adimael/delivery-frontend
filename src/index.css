@@ -2408,6 +2408,42 @@
 .delivery-auth-submit svg { width: 21px; }
 .delivery-auth-guest { min-height: 50px; border-radius: 15px; color: hsl(var(--muted-foreground)); font-size: 14px; font-weight: 800; }
 .delivery-auth-guest:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.delivery-auth-help {
+  padding: 16px;
+  display: grid;
+  gap: 7px;
+  border: 1px solid hsl(var(--button-primary-bg) / .28);
+  border-radius: 17px;
+  background: hsl(var(--button-primary-bg) / .07);
+}
+.delivery-auth-help strong { font-size: 15px; }
+.delivery-auth-help p { color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.5; }
+.delivery-auth-help button {
+  min-height: 46px;
+  margin-top: 3px;
+  border-radius: 13px;
+  color: hsl(var(--button-primary-bg));
+  background: hsl(var(--card));
+  font-size: 14px;
+  font-weight: 900;
+}
+.delivery-auth-help button:hover { background: hsl(var(--muted)); }
+.delivery-auth-success {
+  margin-top: 20px;
+  padding: 24px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  border: 1px solid hsl(var(--button-primary-bg) / .25);
+  border-radius: 22px;
+  background: hsl(var(--button-primary-bg) / .07);
+  text-align: center;
+}
+.delivery-auth-success > svg { width: 44px; height: 44px; color: hsl(var(--button-primary-bg)); }
+.delivery-auth-success strong { font-size: 20px; }
+.delivery-auth-success p { color: hsl(var(--muted-foreground)); line-height: 1.65; }
+.delivery-auth-success button { min-height: 48px; border-radius: 14px; }
+.delivery-auth-terms a { color: hsl(var(--button-primary-bg)); font-weight: 850; }
 .delivery-account-type { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .delivery-account-type legend { grid-column: 1 / -1; }
 .delivery-account-type button { min-height: 76px; padding: 12px; display: flex; align-items: center; gap: 11px; text-align: left; border: 1.5px solid hsl(var(--border)); border-radius: 17px; background: hsl(var(--background)); }

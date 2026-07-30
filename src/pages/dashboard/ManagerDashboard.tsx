@@ -11,6 +11,8 @@ import {
   Settings,
   Loader2,
   Power,
+  Radio,
+  UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +31,29 @@ const chaveDataBahia = (data: Date): string => (
   }).format(data)
 );
 
+const horarioHoje = (configuracao: Record<string, unknown> | null): string => {
+  if (!configuracao) return "Carregando...";
+  const mapa: Record<string, string> = {
+    Sun: "domingo", Mon: "segunda", Tue: "terca", Wed: "quarta",
+    Thu: "quinta", Fri: "sexta", Sat: "sabado",
+  };
+  const nomeDia = mapa[new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Bahia",
+    weekday: "short",
+  }).format(new Date())];
+  const funciona = configuracao[`aberto_${nomeDia}`];
+  if (![true, 1, "1", "true", "sim"].includes(funciona as never)) {
+    return "Fechado hoje";
+  }
+  const abertura = String(
+    configuracao[`hora_abertura_${nomeDia}`] || configuracao.hora_abertura || "",
+  ).slice(0, 5);
+  const fechamento = String(
+    configuracao[`hora_fechamento_${nomeDia}`] || configuracao.hora_fechamento || "",
+  ).slice(0, 5);
+  return abertura && fechamento ? `${abertura} - ${fechamento}` : "Horário não definido";
+};
+
 const ManagerDashboard = () => {
   const navigate = useNavigate();
   const { configuracao, estaAberto, loading, atualizarConfiguracao } = useEstabelecimento();
@@ -37,6 +62,9 @@ const ManagerDashboard = () => {
   const { pedidos } = usePedidos();
   const { produtos } = useProdutos(true);
   const [equipeAtiva, setEquipeAtiva] = useState(0);
+  const [clientesCadastrados, setClientesCadastrados] = useState(0);
+  const [visitantesOnline, setVisitantesOnline] = useState(0);
+  const [visitantesRecentes, setVisitantesRecentes] = useState(0);
   const recebimentoAtivado = configuracao?.aberto === true
     || configuracao?.aberto === 1
     || ['1', 'true', 'sim'].includes(String(configuracao?.aberto ?? '').toLowerCase());
@@ -72,11 +100,35 @@ const ManagerDashboard = () => {
         ['gerente', 'funcionario', 'entregador'].includes(String(perfil.tipo_usuario || ''))
         && ![false, 0, '0', 'false'].includes(perfil.ativo)
       )).length);
+      setClientesCadastrados(perfis.filter(
+        (perfil) => String(perfil.tipo_usuario || '') === 'cliente',
+      ).length);
     }).catch(() => {
       if (ativo) setEquipeAtiva(0);
     });
     return () => {
       ativo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+    const atualizar = async () => {
+      try {
+        const metricas = await apiRequest('/relatorios/publico');
+        if (!ativo) return;
+        setClientesCadastrados(Number(metricas?.clientes_cadastrados || 0));
+        setVisitantesOnline(Number(metricas?.visitantes_online || 0));
+        setVisitantesRecentes(Number(metricas?.visitantes_ultimas_24h || 0));
+      } catch {
+        // Preserva os últimos números válidos durante falhas transitórias.
+      }
+    };
+    void atualizar();
+    const interval = window.setInterval(atualizar, 30_000);
+    return () => {
+      ativo = false;
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -113,9 +165,9 @@ const ManagerDashboard = () => {
     };
   }, [pedidos, produtos]);
 
-  // Formatar horário
-  const horaAbertura = configuracao?.hora_abertura?.slice(0,5) || "08:00";
-  const horaFechamento = configuracao?.hora_fechamento?.slice(0,5) || "18:00";
+  const horarioFuncionamentoHoje = horarioHoje(
+    configuracao as unknown as Record<string, unknown> | null,
+  );
 
   return (
     <DashboardLayout title="Dashboard do Gerente" userType="manager">
@@ -154,7 +206,7 @@ const ManagerDashboard = () => {
               </div>
               <div className="text-center">
                 <div className="text-lg font-semibold">
-                  {horaAbertura} - {horaFechamento}
+                  {horarioFuncionamentoHoje}
                 </div>
                 <p className="text-sm text-gray-500">Horário de funcionamento</p>
               </div>
@@ -185,7 +237,7 @@ const ManagerDashboard = () => {
         </Card>
 
         {/* Cards de Estatísticas */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -248,6 +300,30 @@ const ManagerDashboard = () => {
               <div className="text-2xl font-bold">{equipeAtiva}</div>
               <p className="text-xs text-muted-foreground">
                 Funcionários e entregadores
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clientes cadastrados</CardTitle>
+              <UserRound className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{clientesCadastrados}</div>
+              <p className="text-xs text-muted-foreground">Contas de clientes</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Visitantes online</CardTitle>
+              <Radio className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{visitantesOnline}</div>
+              <p className="text-xs text-muted-foreground">
+                {visitantesRecentes} visitante(s) nas últimas 24h
               </p>
             </CardContent>
           </Card>

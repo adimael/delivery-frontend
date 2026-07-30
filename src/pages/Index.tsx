@@ -22,6 +22,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import EnderecoForm from "@/components/profile/EnderecoForm";
+import { apiRequest } from "@/lib/api";
 
 const fallbackImage = "/placeholder.svg";
 
@@ -165,6 +166,33 @@ export default function Index() {
     }
   }, [enderecos.length, loadingEnderecos, user]);
 
+  useEffect(() => {
+    const storageKey = "deliveryVisitorId";
+    let visitorId = localStorage.getItem(storageKey);
+    if (!visitorId) {
+      visitorId = typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(storageKey, visitorId);
+    }
+
+    const registrarPresenca = () => {
+      if (document.visibilityState !== "visible") return;
+      void apiRequest("/analytics/visit", {
+        method: "POST",
+        body: JSON.stringify({ visitante_id: visitorId }),
+      }).catch(() => undefined);
+    };
+
+    registrarPresenca();
+    const interval = window.setInterval(registrarPresenca, 90_000);
+    document.addEventListener("visibilitychange", registrarPresenca);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", registrarPresenca);
+    };
+  }, []);
+
   const chooseAddress = () => {
     if (!user) {
       sessionStorage.setItem("deliveryPostLoginAction", "address");
@@ -220,15 +248,6 @@ export default function Index() {
               <ChevronRight />
             </button>
           </div>
-
-          <button type="button" className="delivery-address-button" onClick={chooseAddress}>
-            <span className="delivery-address-icon"><Truck /></span>
-            <span>
-              <strong>{configuracao?.texto_chamada_endereco || "Escolha onde receber seu pedido"}</strong>
-              <small>{location || "Informe seu endereço para calcular a entrega"}</small>
-            </span>
-            <ChevronRight />
-          </button>
 
           <div className="delivery-benefits" aria-label="Vantagens">
             <article>

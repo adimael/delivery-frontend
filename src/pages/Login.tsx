@@ -35,6 +35,7 @@ export default function Login() {
   const [emailLogin, setEmailLogin] = useState("");
   const [senhaLogin, setSenhaLogin] = useState("");
   const [carregandoLogin, setCarregandoLogin] = useState(false);
+  const [loginFalhou, setLoginFalhou] = useState(false);
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [emailCadastro, setEmailCadastro] = useState("");
   const [senhaCadastro, setSenhaCadastro] = useState("");
@@ -56,15 +57,18 @@ export default function Login() {
     event.preventDefault();
     if (!emailLogin.trim() || !senhaLogin) return;
     setCarregandoLogin(true);
+    setLoginFalhou(false);
     try {
       const result = await signIn(emailLogin.trim().toLowerCase(), senhaLogin);
       if (!result.success) {
+        setLoginFalhou(true);
         toast({ title: "Não foi possível entrar", description: result.error || "Confira seus dados e tente novamente.", variant: "destructive" });
         return;
       }
       toast({ title: "Acesso realizado", description: `Bem-vindo(a) ao ${platformName}.` });
       navigate(sessionStorage.getItem("deliveryPostLoginAction") === "address" ? "/" : "/dashboard-redirect");
     } catch (error) {
+      setLoginFalhou(true);
       toast({ title: "Não foi possível entrar", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
     } finally {
       setCarregandoLogin(false);
@@ -162,6 +166,23 @@ export default function Login() {
                 <Button type="submit" className="delivery-auth-submit btn-primary" disabled={carregandoLogin || !emailLogin.trim() || !senhaLogin}>
                   {carregandoLogin ? <><Loader2 className="animate-spin" /> Entrando...</> : <>Entrar <ChevronRight /></>}
                 </Button>
+                {loginFalhou && (
+                  <div className="delivery-auth-help" role="status">
+                    <strong>Ainda não possui uma conta?</strong>
+                    <p>Você também pode criar seu cadastro usando o mesmo e-mail informado.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmailCadastro(emailLogin.trim().toLowerCase());
+                        setSenhaCadastro("");
+                        setConfirmacaoSenha("");
+                        setActiveTab("register");
+                      }}
+                    >
+                      Criar conta com este e-mail
+                    </button>
+                  </div>
+                )}
                 <button type="button" className="delivery-auth-guest" onClick={() => navigate("/")}>Continuar sem conta</button>
               </form>
             </TabsContent>
