@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, ReceiptText, ShoppingBag, Store, Tag, Trash2, Truck } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, ChefHat, Minus, Plus, ReceiptText, ShoppingBag, Store, Tag, Trash2, Truck } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,32 @@ import { apiRequest } from "@/lib/api";
 
 const money = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+const RECENT_ORDER_KEY = "deliveryRecentOrder";
+const RECENT_ORDER_TTL = 24 * 60 * 60 * 1000;
+
+interface RecentOrderConfirmation {
+  numero: string;
+  criadoEm: string;
+}
+
+const readRecentOrder = (): RecentOrderConfirmation | null => {
+  try {
+    const saved = window.localStorage.getItem(RECENT_ORDER_KEY);
+    if (!saved) return null;
+
+    const parsed = JSON.parse(saved) as Partial<RecentOrderConfirmation>;
+    const createdAt = Date.parse(String(parsed.criadoEm || ""));
+    if (!parsed.numero || !Number.isFinite(createdAt) || Date.now() - createdAt > RECENT_ORDER_TTL) {
+      window.localStorage.removeItem(RECENT_ORDER_KEY);
+      return null;
+    }
+
+    return { numero: String(parsed.numero), criadoEm: String(parsed.criadoEm) };
+  } catch {
+    return null;
+  }
+};
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -29,6 +55,7 @@ const Cart = () => {
     descricao?: string;
   } | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [recentOrder, setRecentOrder] = useState<RecentOrderConfirmation | null>(readRecentOrder);
 
   const toNumber = (value: unknown): number => {
     if (typeof value === "number") return value;
@@ -61,6 +88,25 @@ const Cart = () => {
       return;
     }
     if (items.length > 0) setIsCheckoutOpen(true);
+  };
+
+  const handleFinishedOrder = (order: Record<string, unknown>) => {
+    const confirmation = {
+      numero: String(order.numero_pedido || order.id || ""),
+      criadoEm: new Date().toISOString(),
+    };
+
+    if (confirmation.numero) {
+      window.localStorage.setItem(RECENT_ORDER_KEY, JSON.stringify(confirmation));
+      setRecentOrder(confirmation);
+    }
+    setIsCheckoutOpen(false);
+  };
+
+  const dismissRecentOrder = () => {
+    window.localStorage.removeItem(RECENT_ORDER_KEY);
+    setRecentOrder(null);
+    navigate("/");
   };
 
   const handleApplyCoupon = async () => {
@@ -133,6 +179,31 @@ const Cart = () => {
         </header>
 
         {items.length === 0 ? (
+          recentOrder ? (
+            <section
+              className="mx-auto max-w-2xl overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-center shadow-xl shadow-emerald-950/5 sm:p-9"
+              role="status"
+            >
+              <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                <CheckCircle2 className="h-11 w-11" aria-hidden="true" />
+              </div>
+              <span className="mt-5 block text-sm font-black uppercase tracking-[0.16em] text-emerald-700">
+                Pedido #{recentOrder.numero}
+              </span>
+              <h2 className="mt-2 text-3xl font-black text-emerald-950">Pedido recebido!</h2>
+              <p className="mx-auto mt-3 max-w-lg text-lg leading-relaxed text-emerald-900">
+                O estabelecimento recebeu seu pedido e ele já está em produção. Guarde o número acima para identificação.
+              </p>
+              <ol className="mt-6 grid gap-3 text-left sm:grid-cols-3" aria-label="Andamento inicial do pedido">
+                <li className="flex items-center gap-2 rounded-2xl bg-white/80 p-3 font-bold"><Check className="h-5 w-5 text-emerald-600" />Enviado</li>
+                <li className="flex items-center gap-2 rounded-2xl bg-white/80 p-3 font-bold"><Check className="h-5 w-5 text-emerald-600" />Recebido</li>
+                <li className="flex items-center gap-2 rounded-2xl bg-white/80 p-3 font-bold"><ChefHat className="h-5 w-5 text-emerald-600" />Em produção</li>
+              </ol>
+              <Button className="btn-primary mt-7 min-h-12 w-full sm:w-auto" onClick={dismissRecentOrder}>
+                Voltar ao cardápio
+              </Button>
+            </section>
+          ) : (
           <section className="delivery-cart-empty">
             <div><ShoppingBag /></div>
             <span className="delivery-auth-kicker">Seu carrinho está esperando</span>
@@ -140,6 +211,7 @@ const Cart = () => {
             <p>Adicione produtos do cardápio e volte aqui para concluir o pedido.</p>
             <Button className="btn-primary" onClick={() => navigate("/")}>Explorar cardápio</Button>
           </section>
+          )
         ) : (
           <div className="delivery-cart-layout">
             <section className="delivery-cart-items" aria-label="Itens do carrinho">
@@ -201,7 +273,7 @@ const Cart = () => {
       <CheckoutModal
         open={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        onFinishOrder={() => setIsCheckoutOpen(false)}
+        onFinishOrder={handleFinishedOrder}
         tipoEntregaInicial={tipoEntrega}
         cupomInicial={cupomAplicado}
       />

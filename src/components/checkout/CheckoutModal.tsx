@@ -29,6 +29,7 @@ import { useCartStore } from "@/stores/cartStore";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
 import { apiRequest } from '@/lib/api';
 import { buscarEnderecoPorCep, formatarCep } from '@/lib/cep';
+import { createWhatsAppConversationUrl } from '@/lib/whatsapp';
 
 interface CartItem {
   id: string;
@@ -77,6 +78,7 @@ interface InvoiceData {
   dataHora: string;
   formaPagamento: string;
   whatsappUrl?: string;
+  statusCliente?: 'em_producao';
 }
 
 interface CheckoutModalProps {
@@ -291,11 +293,6 @@ export const CheckoutModal = ({
   }
 
   const urlPedidoWhatsApp = (pedido: any): string | null => {
-    const numeroConfigurado = String(configuracao?.whatsapp || '').replace(/\D/g, '');
-    if (numeroConfigurado.length < 10) return null;
-    const numero = numeroConfigurado.length <= 11
-      ? `55${numeroConfigurado}`
-      : numeroConfigurado;
     const moeda = (valor: unknown) => new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -362,7 +359,7 @@ export const CheckoutModal = ({
       orderData.observacoes ? `*Observações:* ${orderData.observacoes}` : '',
     ].filter(Boolean).join('\n');
 
-    return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+    return createWhatsAppConversationUrl(configuracao?.whatsapp, mensagem);
   };
 
   // Efeito para preencher automaticamente com o endereço principal do cliente
@@ -879,6 +876,7 @@ export const CheckoutModal = ({
         dataHora: new Date().toISOString(),
         formaPagamento: orderData.formaPagamento,
         whatsappUrl: urlPedidoWhatsApp(createdOrder) || undefined,
+        statusCliente: 'em_producao' as const,
       };
       
       setInvoiceData(invoiceData);

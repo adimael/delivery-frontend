@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MessageCircle, Printer, QrCode } from "lucide-react";
+import { Check, CheckCircle2, ChefHat, MessageCircle, Printer } from "lucide-react";
 import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 import type { MouseEvent } from "react";
@@ -56,6 +56,7 @@ interface InvoiceData {
   desconto?: number;
   total: number;
   whatsappUrl?: string;
+  statusCliente?: "em_producao";
 }
 
 interface InvoiceModalProps {
@@ -98,6 +99,44 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
         </DialogHeader>
 
         <div className="space-y-6 print:space-y-4">
+          <section
+            className="overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 shadow-sm print:border print:bg-white"
+            aria-labelledby="pedido-recebido-title"
+            role="status"
+          >
+            <div className="flex items-start gap-4">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+                <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-emerald-700">
+                  Pedido #{invoiceData.numeroOrdem}
+                </p>
+                <h2 id="pedido-recebido-title" className="mt-1 text-2xl font-black">
+                  Pedido recebido!
+                </h2>
+                <p className="mt-2 text-base leading-relaxed text-emerald-900">
+                  Pode ficar tranquilo: o estabelecimento recebeu seu pedido e ele já está em produção.
+                </p>
+              </div>
+            </div>
+
+            <ol className="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Andamento inicial do pedido">
+              {[
+                { label: "Pedido enviado", icon: Check },
+                { label: "Recebido pela loja", icon: Check },
+                { label: "Em produção", icon: ChefHat },
+              ].map(({ label, icon: Icon }) => (
+                <li
+                  key={label}
+                  className="flex min-h-11 items-center gap-2 rounded-xl bg-white/75 px-3 py-2 font-semibold shadow-sm"
+                >
+                  <Icon className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+                  <span>{label}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
           {/* Cabeçalho da empresa */}
           <div className="text-center border-b pb-4 print:pb-2">
             <h1 className="text-2xl font-bold text-kumekume-orange print:text-black">{platformName}</h1>
@@ -322,7 +361,7 @@ export const InvoiceModal = ({ open, onClose, invoiceData }: InvoiceModalProps) 
             <Button asChild className="min-h-11 bg-emerald-600 hover:bg-emerald-700">
               <a href={invoiceData.whatsappUrl} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4 mr-2" />
-                Enviar ao WhatsApp
+                Abrir conversa com a loja
               </a>
             </Button>
           )}
