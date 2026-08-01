@@ -243,6 +243,7 @@ export const useProductOptions = ({
   const excluirCategoria = async (id: string) => {
     await apiRequest(`/admin/opcoes/categorias/${id}`, { method: 'DELETE' });
     setCategorias(prev => prev.filter(item => item.id !== id));
+    setOpcoes(prev => prev.filter(item => item.categoria_id !== id));
     return true;
   };
 

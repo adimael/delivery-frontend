@@ -265,7 +265,7 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
         title: "Categoria excluída",
         description: "A categoria foi excluída com sucesso.",
       });
-      refetch();
+      await Promise.all([refetch(), loadProdutoOpcoes()]);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -348,11 +348,12 @@ const ProductOptionsModal = ({ open, onOpenChange, produtoId, produtoNome }: Pro
 
     try {
       await desvincularCategoriaAoProduto(produtoId, categoriaId);
+      setCategoriaParaVincular("");
       toast({
         title: "Categoria desvinculada",
         description: "A categoria foi desvinculada do produto com sucesso.",
       });
-      await loadProdutoOpcoes();
+      await Promise.all([refetch(), loadProdutoOpcoes()]);
     } catch (error: any) {
       toast({
         title: "Erro",
