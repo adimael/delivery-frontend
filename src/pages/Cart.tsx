@@ -53,6 +53,7 @@ const Cart = () => {
     codigo: string;
     desconto: number;
     descricao?: string;
+    frete_gratis?: boolean;
   } | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [recentOrder, setRecentOrder] = useState<RecentOrderConfirmation | null>(readRecentOrder);
@@ -72,6 +73,7 @@ const Cart = () => {
   );
   const minimoFreteGratis = toNumber(configuracao?.valor_minimo_frete_gratis);
   const taxaEntrega = tipoEntrega === "entrega"
+    && !cupomAplicado?.frete_gratis
     && !(minimoFreteGratis > 0 && subtotal >= minimoFreteGratis)
     ? toNumber(configuracao?.taxa_entrega)
     : 0;
@@ -135,8 +137,10 @@ const Cart = () => {
         codigo: codigoValidado,
         desconto: toNumber(resultado.desconto),
         descricao: typeof resultado.descricao === "string" ? resultado.descricao : undefined,
+        frete_gratis: resultado.frete_gratis === true || Number(resultado.frete_gratis ?? 0) === 1,
       });
-      toast({ title: "Cupom aplicado", description: `Você ganhou ${money(toNumber(resultado.desconto))} de desconto.` });
+      const freteGratis = resultado.frete_gratis === true || Number(resultado.frete_gratis ?? 0) === 1;
+      toast({ title: "Cupom aplicado", description: `Você ganhou ${money(toNumber(resultado.desconto))} de desconto${freteGratis ? " e frete grátis" : ""}.` });
     } catch (error) {
       setCupomAplicado(null);
       toast({
@@ -254,7 +258,7 @@ const Cart = () => {
               <div className="delivery-cart-coupon">
                 <label htmlFor="coupon"><Tag /> Tem um cupom?</label>
                 <div><Input id="coupon" value={couponCode} onChange={(event) => { setCouponCode(event.target.value.toUpperCase()); setCupomAplicado(null); }} placeholder="Digite o código" /><Button variant="outline" onClick={() => void handleApplyCoupon()} disabled={!couponCode.trim() || validandoCupom}>{validandoCupom ? "Validando" : "Aplicar"}</Button></div>
-                {cupomAplicado && <p className="delivery-cart-coupon-success">Cupom {cupomAplicado.codigo} aplicado.</p>}
+                {cupomAplicado && <p className="delivery-cart-coupon-success">Cupom {cupomAplicado.codigo} aplicado{cupomAplicado.frete_gratis ? " com frete grátis" : ""}.</p>}
               </div>
               <dl>
                 <div><dt>Subtotal</dt><dd>{money(subtotal)}</dd></div>

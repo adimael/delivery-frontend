@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CalendarDays, Edit3, PackageCheck, Percent, Save, ShieldCheck, Ticket, Trash2, Users } from "lucide-react";
+import { CalendarDays, Edit3, PackageCheck, Percent, Save, ShieldCheck, Ticket, Trash2, Truck, Users } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ type Cupom = {
   limite_usos?: number | null; usos_realizados: number; limite_por_cliente: number;
   valido_de?: string | null; valido_ate?: string | null; ativo: boolean | number;
   exige_cadastro?: boolean | number; somente_primeiro_pedido?: boolean | number;
+  frete_gratis?: boolean | number;
   escopo?: "pedido" | "produtos"; produtos?: Array<{ produto_uuid: string; nome: string }>;
 };
 
@@ -26,7 +27,7 @@ const vazio = {
   codigo: "", descricao: "", tipo: "percentual" as "percentual" | "fixo",
   valor: 10, desconto_maximo: "", pedido_minimo: 0, limite_usos: "",
   limite_por_cliente: 1, valido_de: "", valido_ate: "", ativo: true,
-  exige_cadastro: true, somente_primeiro_pedido: false,
+  exige_cadastro: true, somente_primeiro_pedido: false, frete_gratis: false,
   escopo: "pedido" as "pedido" | "produtos", produtos_uuid: [] as string[],
 };
 
@@ -83,6 +84,7 @@ export default function ManagerCoupons() {
       ativo: Number(cupom.ativo) === 1,
       exige_cadastro: Number(cupom.exige_cadastro ?? 1) === 1,
       somente_primeiro_pedido: Number(cupom.somente_primeiro_pedido ?? 0) === 1,
+      frete_gratis: cupom.frete_gratis === true || Number(cupom.frete_gratis ?? 0) === 1,
       escopo: cupom.escopo || "pedido",
       produtos_uuid: (cupom.produtos || []).map((produto) => produto.produto_uuid),
     });
@@ -145,6 +147,7 @@ export default function ManagerCoupons() {
                   <div><Label htmlFor="teto">Teto do desconto (R$)</Label><Input id="teto" type="number" min=".01" step=".01" value={form.desconto_maximo} onChange={(e) => setForm({ ...form, desconto_maximo: e.target.value })} placeholder="Sem teto" /></div>
                 </div>
                 <div><Label htmlFor="minimo">Valor mínimo do pedido (R$)</Label><Input id="minimo" type="number" min="0" step=".01" value={form.pedido_minimo} onChange={(e) => setForm({ ...form, pedido_minimo: Number(e.target.value) })} /></div>
+                <label className="coupon-rule"><Checkbox checked={form.frete_gratis} onCheckedChange={(v) => setForm({ ...form, frete_gratis: v === true })} /><span><strong>Oferecer frete grátis</strong><small>Além do desconto configurado, a taxa de entrega será zerada pelo servidor.</small></span></label>
               </section>
 
               <section className="coupon-section">
@@ -186,6 +189,7 @@ export default function ManagerCoupons() {
               <div className="coupon-tags">
                 <span><Users />{Number(cupom.exige_cadastro ?? 1) === 1 ? "Clientes cadastrados" : "Visitantes permitidos"}</span>
                 {Number(cupom.somente_primeiro_pedido ?? 0) === 1 && <span><ShieldCheck />Primeiro pedido</span>}
+                {(cupom.frete_gratis === true || Number(cupom.frete_gratis ?? 0) === 1) && <span><Truck />Frete grátis</span>}
                 <span><PackageCheck />{cupom.escopo === "produtos" ? `${cupom.produtos?.length || 0} produtos` : "Pedido inteiro"}</span>
                 {(cupom.valido_de || cupom.valido_ate) && <span><CalendarDays />Período definido</span>}
               </div>

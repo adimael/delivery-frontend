@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import EnderecoForm from "@/components/profile/EnderecoForm";
 import { apiRequest } from "@/lib/api";
+import { createWhatsAppConversationUrl } from "@/lib/whatsapp";
 
 const fallbackImage = "/placeholder.svg";
 
@@ -68,14 +69,6 @@ const linkInstagram = (valor?: string): string | null => {
     .replace(/^\/+|\/+$/g, '');
 
   return usuario ? `https://www.instagram.com/${encodeURIComponent(usuario)}` : null;
-};
-
-const linkWhatsApp = (valor?: string): string | null => {
-  const numeros = valor?.replace(/\D/g, '') || '';
-  if (!numeros) return null;
-  const telefone = numeros.startsWith('55') ? numeros : `55${numeros}`;
-
-  return `https://wa.me/${telefone}`;
 };
 
 export default function Index() {
@@ -140,7 +133,7 @@ export default function Index() {
 
   const platformName = configuracao?.nome_plataforma || "Meu Delivery";
   const instagramUrl = linkInstagram(configuracao?.instagram);
-  const whatsappUrl = linkWhatsApp(configuracao?.whatsapp);
+  const whatsappUrl = createWhatsAppConversationUrl(configuracao?.whatsapp);
   const horarios = useMemo(() => horariosDaSemana(configuracao), [configuracao]);
   const possuiRedesSociais = Boolean(instagramUrl || whatsappUrl);
   const location = [
@@ -353,16 +346,23 @@ export default function Index() {
               </nav>
             </>
           )}
-          <a
-            className="delivery-powered-by"
-            href="https://vupi.us/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Conheça a tecnologia vupi.us API"
-          >
-            <small>Tecnologia</small>
-            <strong>vupi.us API</strong>
-          </a>
+          <div className="delivery-credits">
+            <a
+              className="delivery-powered-by"
+              href="https://vupi.us/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Conheça a tecnologia vupi.us API"
+            >
+              <small>Tecnologia</small>
+              <strong>vupi.us API</strong>
+            </a>
+            <span>Desenvolvido por <strong>Adimael S.</strong></span>
+            <nav aria-label="Contatos do desenvolvedor">
+              <a href="https://api.whatsapp.com/send?phone=5573999738916&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener noreferrer">+55 73 99973-8916</a>
+              <a href="https://adimael.github.io" target="_blank" rel="noopener noreferrer">adimael.github.io</a>
+            </nav>
+          </div>
         </footer>
       </div>
 

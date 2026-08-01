@@ -90,6 +90,7 @@ interface CheckoutModalProps {
     codigo: string;
     desconto: number;
     descricao?: string;
+    frete_gratis?: boolean;
   } | null;
 }
 
@@ -122,6 +123,7 @@ export const CheckoutModal = ({
     codigo: string;
     desconto: number;
     descricao?: string;
+    frete_gratis?: boolean;
   } | null>(null);
   const [pedidoCriado, setPedidoCriado] = useState<any>(null);
   const [areaIndisponivel, setAreaIndisponivel] = useState('');
@@ -278,7 +280,10 @@ export const CheckoutModal = ({
 
   const calculatedValues = {
     subtotal,
-    taxaEntrega: tipoEntrega === 'entrega' && !localidadeGratis && !gratuidadePorValor
+    taxaEntrega: tipoEntrega === 'entrega'
+      && !cupomAplicado?.frete_gratis
+      && !localidadeGratis
+      && !gratuidadePorValor
       ? toNumber(configuracao?.taxa_entrega || 0)
       : 0,
     totalAjustado: 0 // Will be calculated below
