@@ -8,6 +8,7 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -27,9 +28,10 @@ import { ArrowLeft, ArrowRight, Banknote, MapPinOff, QrCode, ShieldCheck, Wallet
 import { generatePixPayload, generatePixQRCode } from "@/utils/pixUtils";
 import { useCartStore } from "@/stores/cartStore";
 import { InvoiceModal } from "@/components/checkout/InvoiceModal";
-import { apiRequest } from '@/lib/api';
+import { ApiError, apiRequest } from '@/lib/api';
 import { buscarEnderecoPorCep, formatarCep } from '@/lib/cep';
 import { createWhatsAppConversationUrl } from '@/lib/whatsapp';
+import { useNavigate } from 'react-router-dom';
 
 interface CartItem {
   id: string;
@@ -85,6 +87,7 @@ interface CheckoutModalProps {
   open: boolean;
   onClose: () => void;
   onFinishOrder: (orderData: Record<string, unknown>) => void;
+  onCartAdjusted?: () => void;
   tipoEntregaInicial?: 'entrega' | 'retirada';
   cupomInicial?: {
     codigo: string;
@@ -98,12 +101,14 @@ export const CheckoutModal = ({
   open,
   onClose,
   onFinishOrder,
+  onCartAdjusted,
   tipoEntregaInicial = 'entrega',
   cupomInicial = null,
 }: CheckoutModalProps) => {
   const GUEST_ADDRESS_KEY = 'deliveryGuestAddress';
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { items, clearCart } = useCartStore();
+  const { items, clearCart, removeItem, removeSelections } = useCartStore();
   const { toast } = useToast();
   const { configuracao, estaAberto } = useEstabelecimento();
   const { enderecos, addEndereco } = useUserProfile();
@@ -127,6 +132,7 @@ export const CheckoutModal = ({
   } | null>(null);
   const [pedidoCriado, setPedidoCriado] = useState<any>(null);
   const [areaIndisponivel, setAreaIndisponivel] = useState('');
+  const [opcoesIndisponiveis, setOpcoesIndisponiveis] = useState<string[]>([]);
   const [precisaTroco, setPrecisaTroco] = useState(false);
   const [trocoParaCentavos, setTrocoParaCentavos] = useState(0);
   
@@ -451,6 +457,7 @@ export const CheckoutModal = ({
     setCupomAplicado(cupomInicial);
     setPedidoCriado(null);
     setAreaIndisponivel('');
+    setOpcoesIndisponiveis([]);
     setPrecisaTroco(false);
     setTrocoParaCentavos(0);
     setOrderData({
@@ -892,6 +899,17 @@ export const CheckoutModal = ({
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error);
       console.error('Erro ao finalizar pedido:', errMsg);
+      const detalhes = error instanceof ApiError && error.details && typeof error.details === 'object'
+        ? error.details as { code?: string; invalid_option_ids?: unknown }
+        : null;
+      const idsInvalidos = detalhes?.code === 'cart_options_unavailable'
+        && Array.isArray(detalhes.invalid_option_ids)
+        ? detalhes.invalid_option_ids.map(String)
+        : [];
+      if (idsInvalidos.length > 0) {
+        setOpcoesIndisponiveis(idsInvalidos);
+        return;
+      }
       const erroDeCobertura = errMsg.toLowerCase().includes('área de entrega')
         || errMsg.toLowerCase().includes('fora da nossa área')
         || errMsg.toLowerCase().includes('não entregamos nesse endereço');
@@ -917,6 +935,33 @@ export const CheckoutModal = ({
         description: "Cole o código no aplicativo do seu banco.",
       });
     }
+  };
+
+  const itensComOpcoesIndisponiveis = items.filter(item =>
+    (item.customizations?.selections || []).some(
+      selecao => opcoesIndisponiveis.includes(selecao.opcao_uuid || selecao.id),
+    ),
+  );
+
+  const removerOpcoesIndisponiveis = () => {
+    removeSelections(opcoesIndisponiveis);
+    onCartAdjusted?.();
+    setOpcoesIndisponiveis([]);
+    setPedidoCriado(null);
+    toast({
+      title: 'Carrinho atualizado',
+      description: 'Os adicionais indisponíveis foram removidos. Confira o pedido antes de continuar.',
+    });
+    handleClose();
+  };
+
+  const escolherOutrasOpcoes = () => {
+    const primeiroProduto = itensComOpcoesIndisponiveis[0]?.id;
+    Array.from(new Set(itensComOpcoesIndisponiveis.map(item => item.id))).forEach(removeItem);
+    onCartAdjusted?.();
+    setOpcoesIndisponiveis([]);
+    handleClose();
+    if (primeiroProduto) navigate(`/product/${encodeURIComponent(primeiroProduto)}`);
   };
 
   return (
@@ -1622,6 +1667,46 @@ export const CheckoutModal = ({
           <AlertDialogFooter>
             <AlertDialogAction className="min-h-12 w-full rounded-xl">
               Alterar endereço
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={opcoesIndisponiveis.length > 0}
+        onOpenChange={(aberto) => {
+          if (!aberto) setOpcoesIndisponiveis([]);
+        }}
+      >
+        <AlertDialogContent className="max-w-md rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Seu carrinho precisa ser atualizado</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-base leading-relaxed">
+                <p>Estes adicionais não estão mais disponíveis:</p>
+                <ul className="space-y-2" aria-label="Adicionais indisponíveis">
+                  {items.flatMap(item => (item.customizations?.selections || [])
+                    .filter(selecao => opcoesIndisponiveis.includes(selecao.opcao_uuid || selecao.id))
+                    .map(selecao => (
+                      <li key={`${item.id}-${selecao.opcao_uuid || selecao.id}`} className="rounded-xl border bg-muted/50 px-4 py-3">
+                        <strong className="block text-foreground">{selecao.nome}</strong>
+                        <span className="text-sm">No produto: {item.name}</span>
+                      </li>
+                    )))}
+                </ul>
+                <p>Remova somente esses adicionais ou volte ao carrinho para escolher outras opções.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOpcoesIndisponiveis([])}>
+              Agora não
+            </AlertDialogCancel>
+            <Button type="button" variant="outline" onClick={removerOpcoesIndisponiveis}>
+              Remover indisponíveis
+            </Button>
+            <AlertDialogAction onClick={escolherOutrasOpcoes}>
+              Escolher outras opções
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

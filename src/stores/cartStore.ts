@@ -32,6 +32,7 @@ interface CartStore {
   addItem: (item: CartItem) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
+  removeSelections: (optionIds: string[]) => void;
   clearCart: () => void;
 }
 
@@ -163,6 +164,38 @@ export const useCartStore = create<CartStore>()(
       removeItem: (itemId: string) => {
         set({
           items: get().items.filter(item => item.id !== itemId)
+        });
+      },
+
+      removeSelections: (optionIds: string[]) => {
+        const removidas = new Set(optionIds);
+        set({
+          items: get().items.map(item => {
+            const selecoes = item.customizations?.selections;
+            if (!selecoes?.some(selecao => removidas.has(selecao.opcao_uuid || selecao.id))) {
+              return item;
+            }
+            const restantes = selecoes.filter(
+              selecao => !removidas.has(selecao.opcao_uuid || selecao.id),
+            );
+            const variacoes = item.customizations?.variations
+              ? Object.values(item.customizations.variations).reduce(
+                  (total, variacao) => total + (Number(variacao.preco_adicional) || 0),
+                  0,
+                )
+              : 0;
+            const adicionais = restantes.reduce(
+              (total, selecao) => total
+                + (Number(selecao.preco_adicional) || 0) * Math.max(1, selecao.quantidade),
+              0,
+            );
+
+            return {
+              ...item,
+              customizations: { ...item.customizations, selections: restantes },
+              totalPrice: (Number(item.price) + variacoes + adicionais) * item.quantity,
+            };
+          }),
         });
       },
       

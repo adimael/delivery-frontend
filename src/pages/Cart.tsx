@@ -278,6 +278,10 @@ const Cart = () => {
         open={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         onFinishOrder={handleFinishedOrder}
+        onCartAdjusted={() => {
+          setCupomAplicado(null);
+          setCouponCode("");
+        }}
         tipoEntregaInicial={tipoEntrega}
         cupomInicial={cupomAplicado}
       />
