@@ -154,6 +154,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* Compatibilidade com links emitidos antes da padronização da rota. */}
+            <Route path="/redefinir-senha" element={<ResetPassword />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/tutorial" element={<Tutorial />} />
