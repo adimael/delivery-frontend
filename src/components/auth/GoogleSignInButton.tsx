@@ -35,8 +35,8 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
         callback: ({ credential }) => credential && onCredential(credential),
       });
       window.google.accounts.id.renderButton(container.current, {
-        type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
-        shape: 'pill', width: Math.min(400, container.current.clientWidth || 320), locale: 'pt-BR',
+        type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
+        shape: 'rectangular', width: Math.min(400, container.current.clientWidth || 320), locale: 'pt-BR',
       });
     };
     const existing = document.querySelector<HTMLScriptElement>('script[data-google-identity]');
@@ -55,5 +55,13 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
     return () => { active = false; };
   }, [clientId, onCredential, onUnavailable]);
 
-  return <div ref={container} aria-disabled={disabled} style={{ opacity: disabled ? 0.55 : 1, pointerEvents: disabled ? 'none' : 'auto', minHeight: 44 }} />;
+  return (
+    <div
+      ref={container}
+      className="delivery-google-login"
+      aria-label="Fazer login com o Google"
+      aria-disabled={disabled}
+      style={{ opacity: disabled ? 0.55 : 1, pointerEvents: disabled ? 'none' : 'auto' }}
+    />
+  );
 }
