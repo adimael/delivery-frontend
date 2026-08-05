@@ -36,7 +36,7 @@ export default function Login() {
     setLoading(false);
     if (!result.success) {
       toast({
-        title: result.pendingApproval ? 'Cadastro aguardando aprovaÃ§Ã£o' : 'NÃ£o foi possÃ­vel entrar',
+        title: result.pendingApproval ? 'Cadastro aguardando aprovação' : 'Não foi possível entrar',
         description: result.error,
         variant: result.pendingApproval ? 'default' : 'destructive',
       });
@@ -52,7 +52,7 @@ export default function Login() {
     const result = await signIn(email.trim().toLowerCase(), senha);
     setLoading(false);
     if (!result.success) {
-      toast({ title: 'NÃ£o foi possÃ­vel entrar', description: result.error, variant: 'destructive' });
+      toast({ title: 'Não foi possível entrar', description: result.error, variant: 'destructive' });
       return;
     }
     concluir();
@@ -62,29 +62,29 @@ export default function Login() {
     <main className="delivery-auth-page">
       <section className="delivery-auth-showcase" aria-label={`Acesso ao ${nome}`}>
         <button type="button" className="delivery-auth-back" onClick={() => navigate('/', { replace: true })}>
-          <ArrowLeft /><span>Voltar ao cardÃ¡pio</span>
+          <ArrowLeft /><span>Voltar ao cardápio</span>
         </button>
         <div className="delivery-auth-brand"><Logo /></div>
         <div className="delivery-auth-message">
           <span className="delivery-auth-kicker">Seu pedido, do seu jeito</span>
           <h1>Entre com sua conta Google.</h1>
-          <p>Sem cadastro e sem senha para decorar. Seus endereÃ§os e pedidos continuam protegidos.</p>
+          <p>Sem cadastro e sem senha para decorar. Seus endereços e pedidos continuam protegidos.</p>
         </div>
         <div className="delivery-auth-benefits">
-          <span><ShoppingBag /> Pedidos organizados</span><span><Truck /> Acompanhamento fÃ¡cil</span>
+          <span><ShoppingBag /> Pedidos organizados</span><span><Truck /> Acompanhamento fácil</span>
         </div>
       </section>
 
       <section className="delivery-auth-panel">
         <div className="delivery-auth-mobile-head">
-          <button type="button" onClick={() => navigate('/', { replace: true })} aria-label="Voltar ao cardÃ¡pio"><ArrowLeft /></button>
+          <button type="button" onClick={() => navigate('/', { replace: true })} aria-label="Voltar ao cardápio"><ArrowLeft /></button>
           <Logo />
         </div>
         <div className="delivery-auth-card">
           <header>
-            <span className="delivery-auth-kicker">Ãrea segura</span>
+            <span className="delivery-auth-kicker">Área segura</span>
             <h2>{equipe ? 'Acesso da equipe' : 'Como deseja entrar?'}</h2>
-            <p>{equipe ? 'Acesso reservado a gerente e funcionÃ¡rios.' : 'Escolha o perfil e continue com o Google.'}</p>
+            <p>{equipe ? 'Acesso exclusivo para gerente e funcionários do Deliciê.' : 'Escolha o perfil e continue com o Google.'}</p>
           </header>
 
           {equipe ? (
@@ -99,16 +99,19 @@ export default function Login() {
               <fieldset className="delivery-account-type" disabled={loading}>
                 <legend>Selecione seu perfil</legend>
                 <button type="button" className={papel === 'cliente' ? 'is-active' : ''} onClick={() => setPapel('cliente')}><UserRound /><span><strong>Cliente</strong><small>Fazer e acompanhar pedidos</small></span></button>
-                <button type="button" className={papel === 'entregador' ? 'is-active' : ''} onClick={() => setPapel('entregador')}><Truck /><span><strong>Entregador</strong><small>Acesso sujeito Ã  aprovaÃ§Ã£o da gerÃªncia</small></span></button>
+                <button type="button" className={papel === 'entregador' ? 'is-active' : ''} onClick={() => setPapel('entregador')}><Truck /><span><strong>Entregador</strong><small>Acesso sujeito à aprovação da gerência</small></span></button>
               </fieldset>
               <GoogleSignInButton disabled={loading} onCredential={autenticarGoogle} onUnavailable={setErroGoogle} />
               {loading && <p role="status"><Loader2 className="animate-spin" /> Validando sua conta...</p>}
               {erroGoogle && <p role="alert">{erroGoogle}</p>}
               <button type="button" className="delivery-auth-guest" onClick={() => navigate('/')}>Continuar sem conta</button>
-              <Link className="delivery-auth-guest" to="/login?equipe=1">Acesso da equipe</Link>
+              <Link className="delivery-team-access" to="/login?equipe=1">
+                <LockKeyhole />
+                <span><strong>Acesso da equipe Deliciê</strong><small>Exclusivo para gerente e funcionários</small></span>
+              </Link>
             </div>
           )}
-          <p className="delivery-auth-terms">Ao continuar, vocÃª declara estar de acordo com os termos e a polÃ­tica de privacidade.</p>
+          <p className="delivery-auth-terms">Ao continuar, você declara estar de acordo com os termos e a política de privacidade.</p>
         </div>
       </section>
     </main>

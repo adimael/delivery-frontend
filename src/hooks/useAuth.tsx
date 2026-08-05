@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       persistSession(data);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'NÃ£o foi possÃ­vel entrar com o Google.';
+      const message = error instanceof Error ? error.message : 'Não foi possível entrar com o Google.';
       return {
         success: false,
         error: message,

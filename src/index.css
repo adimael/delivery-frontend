@@ -2430,6 +2430,12 @@
 .delivery-auth-submit svg { width: 21px; }
 .delivery-auth-guest { min-height: 50px; border-radius: 15px; color: hsl(var(--muted-foreground)); font-size: 14px; font-weight: 800; }
 .delivery-auth-guest:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.delivery-team-access { min-height: 66px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 12px; border: 1.5px solid hsl(var(--button-primary-bg)); border-radius: 17px; background: hsl(var(--button-primary-bg) / .1); color: hsl(var(--foreground)); box-shadow: 0 10px 26px hsl(var(--button-primary-bg) / .12); transition: transform .18s ease, background .18s ease, box-shadow .18s ease; }
+.delivery-team-access:hover { transform: translateY(-2px); background: hsl(var(--button-primary-bg) / .17); box-shadow: 0 14px 30px hsl(var(--button-primary-bg) / .2); }
+.delivery-team-access > svg { width: 25px; height: 25px; flex: none; color: hsl(var(--button-primary-bg)); }
+.delivery-team-access > span { display: grid; text-align: left; }
+.delivery-team-access strong { font-size: 15px; font-weight: 900; }
+.delivery-team-access small { margin-top: 2px; color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 700; }
 .delivery-auth-help {
   padding: 16px;
   display: grid;

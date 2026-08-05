@@ -22,7 +22,7 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
 
   useEffect(() => {
     if (!clientId) {
-      onUnavailable('Login com Google ainda nÃ£o foi configurado.');
+      onUnavailable('Login com Google ainda não foi configurado.');
       return;
     }
     let active = true;
@@ -49,7 +49,7 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
       script.defer = true;
       script.dataset.googleIdentity = 'true';
       script.onload = render;
-      script.onerror = () => onUnavailable('NÃ£o foi possÃ­vel carregar o login do Google.');
+      script.onerror = () => onUnavailable('Não foi possível carregar o login do Google.');
       document.head.appendChild(script);
     }
     return () => { active = false; };
