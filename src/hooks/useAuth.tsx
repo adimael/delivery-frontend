@@ -19,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, nomeCompleto: string, tipoUsuario?: 'cliente' | 'entregador') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithGoogle: (credential: string, papel: 'cliente' | 'entregador') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
@@ -142,6 +143,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signInWithGoogle = async (credential: string, papel: 'cliente' | 'entregador') => {
+    try {
+      const data = await authAPI.google(credential, papel);
+      persistSession(data);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'NÃ£o foi possÃ­vel entrar com o Google.';
+      return {
+        success: false,
+        error: message,
+        pendingApproval: papel === 'entregador' && /aguardando aprova/i.test(message),
+      };
+    }
+  };
+
   const signOut = async () => {
     localStorage.removeItem('user');
     localStorage.removeItem('authToken');
@@ -175,7 +191,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signOut, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

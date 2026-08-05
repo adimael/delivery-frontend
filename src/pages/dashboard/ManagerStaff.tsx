@@ -105,6 +105,7 @@ const ManagerStaff = ({ tipoUsuario = "funcionario" }: ManagerStaffProps) => {
 
   const handleApproval = async (id: string, approve: boolean) => {
     const result = await atualizarFuncionario(id, {
+      tipo_usuario: "entregador",
       ativo: approve,
       status_aprovacao: approve ? "aprovado" : "rejeitado",
     });

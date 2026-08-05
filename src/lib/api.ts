@@ -37,7 +37,13 @@ export const refreshSession = async (): Promise<boolean> => {
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({
+          refresh_token: refreshToken,
+          papel: (() => {
+            try { return JSON.parse(localStorage.getItem('user') || '{}').tipo_usuario || null; }
+            catch { return null; }
+          })(),
+        }),
       });
       const data = await responseBody(response);
       if (!response.ok || !data?.access_token || !data?.refresh_token) {
@@ -191,6 +197,7 @@ export const pedidosAPI = {
 };
 
 export const perfisAPI = {
+  create: (data: unknown) => apiRequest('/equipe', { method: 'POST', body: JSON.stringify(data) }),
   getAll: () => apiRequest('/perfis'),
   getById: (id: string) => apiRequest(`/perfis/${id}`),
   update: (id: string, data: unknown) => apiRequest(`/perfis/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -204,6 +211,10 @@ export const perfisAPI = {
 export const authAPI = {
   signup: (data: unknown) => apiRequest('/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
   signin: (data: unknown) => apiRequest('/auth/signin', { method: 'POST', body: JSON.stringify(data) }),
+  google: (credential: string, papel: 'cliente' | 'entregador') => apiRequest('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential, papel }),
+  }),
   refresh: refreshSession,
   getProfile: () => apiRequest('/auth/profile'),
 };

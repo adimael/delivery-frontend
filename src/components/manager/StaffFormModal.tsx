@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { perfisAPI, authAPI } from '@/lib/api';
+import { perfisAPI } from '@/lib/api';
 import { User, Mail, Phone, Shield, Key } from "lucide-react";
 
 interface StaffMember {
@@ -130,19 +130,23 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
         });
       } else {
         // Criar novo funcionário
-        const authResponse = await authAPI.signup({
+        const authResponse = await perfisAPI.create({
           email: formData.email,
           password: senha,
-          nome_completo: formData.nome_completo
+          senha,
+          nome_completo: formData.nome_completo,
+          telefone: formData.telefone,
+          tipo_usuario: formData.tipo_usuario,
         });
 
         if (authResponse.error) {
           throw new Error(authResponse.error);
         }
 
-        if (authResponse.user) {
+        const createdUser = authResponse.usuario ?? authResponse.user;
+        if (createdUser) {
           // Atualizar o perfil do usuário criado
-          const profileResponse = await perfisAPI.update(authResponse.user.id, {
+          const profileResponse = await perfisAPI.update(createdUser.id ?? createdUser.uuid, {
             nome_completo: formData.nome_completo,
             telefone: formData.telefone,
             tipo_usuario: formData.tipo_usuario,
