@@ -41,6 +41,7 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [senhaGerada, setSenhaGerada] = useState('');
   const [alterarSenha, setAlterarSenha] = useState(false);
+  const [acessoGoogle, setAcessoGoogle] = useState(!staff?.id && defaultType === 'funcionario');
 
   const gerarSenhaAleatoria = () => {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -54,7 +55,7 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
   };
 
   const validarSenhas = () => {
-    if (!staff?.id) {
+    if (!staff?.id && !acessoGoogle) {
       // Para novo funcionário, senha é obrigatória
       if (!senha) {
         toast({
@@ -132,8 +133,8 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
         // Criar novo funcionário
         const authResponse = await perfisAPI.create({
           email: formData.email,
-          password: senha,
-          senha,
+          ...(acessoGoogle ? {} : { password: senha, senha }),
+          acesso_google: acessoGoogle,
           nome_completo: formData.nome_completo,
           telefone: formData.telefone,
           tipo_usuario: formData.tipo_usuario,
@@ -159,7 +160,9 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
 
           toast({
             title: "Funcionário criado",
-            description: `Funcionário criado com sucesso! Senha: ${senhaGerada || senha}`,
+            description: acessoGoogle
+              ? 'E-mail autorizado. O membro já pode entrar com a conta Google cadastrada.'
+              : `Funcionário criado com sucesso! Senha: ${senhaGerada || senha}`,
             duration: 10000,
           });
         }
@@ -180,6 +183,7 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
       setConfirmarSenha('');
       setSenhaGerada('');
       setAlterarSenha(false);
+      setAcessoGoogle(defaultType === 'funcionario');
       
     } catch (error: any) {
       console.error('Erro ao salvar funcionário:', error);
@@ -218,6 +222,7 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
       setConfirmarSenha('');
       setSenhaGerada('');
       setAlterarSenha(false);
+      setAcessoGoogle(defaultType === 'funcionario');
     }
   };
 
@@ -267,7 +272,10 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
 
           <div>
             <Label htmlFor="tipo_usuario">Tipo *</Label>
-            <Select value={formData.tipo_usuario} onValueChange={(value: 'funcionario' | 'entregador' | 'gerente') => setFormData(prev => ({ ...prev, tipo_usuario: value }))}>
+            <Select value={formData.tipo_usuario} onValueChange={(value: 'funcionario' | 'entregador' | 'gerente') => {
+              setFormData(prev => ({ ...prev, tipo_usuario: value }));
+              setAcessoGoogle(value === 'funcionario' || value === 'gerente');
+            }}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -279,8 +287,20 @@ const StaffFormModal = ({ open, onOpenChange, staff, onSuccess, defaultType = 'f
             </Select>
           </div>
 
-          {/* Campos de senha - sempre visível para novo funcionário */}
-          {!staff?.id && (
+          {!staff?.id && formData.tipo_usuario !== 'entregador' && (
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor="acesso-google">Autorizar login com Google</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">O e-mail e o papel serão validados pelo servidor.</p>
+                </div>
+                <Switch id="acesso-google" checked={acessoGoogle} onCheckedChange={setAcessoGoogle} />
+              </div>
+            </div>
+          )}
+
+          {/* Senha permanece disponível como contingência. */}
+          {!staff?.id && !acessoGoogle && (
             <>
               <div>
                 <Label htmlFor="senha">Senha *</Label>

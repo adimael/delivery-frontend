@@ -211,7 +211,7 @@ export const perfisAPI = {
 export const authAPI = {
   signup: (data: unknown) => apiRequest('/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
   signin: (data: unknown) => apiRequest('/auth/signin', { method: 'POST', body: JSON.stringify(data) }),
-  google: (credential: string, papel: 'cliente' | 'entregador') => apiRequest('/auth/google', {
+  google: (credential: string, papel: 'cliente' | 'entregador' | 'equipe') => apiRequest('/auth/google', {
     method: 'POST',
     body: JSON.stringify({ credential, papel }),
   }),

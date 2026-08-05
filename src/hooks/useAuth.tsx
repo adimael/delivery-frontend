@@ -19,7 +19,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, nomeCompleto: string, tipoUsuario?: 'cliente' | 'entregador') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signInWithGoogle: (credential: string, papel: 'cliente' | 'entregador') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
+  signInWithGoogle: (credential: string, papel: 'cliente' | 'entregador' | 'equipe') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = async (credential: string, papel: 'cliente' | 'entregador') => {
+  const signInWithGoogle = async (credential: string, papel: 'cliente' | 'entregador' | 'equipe') => {
     try {
       const data = await authAPI.google(credential, papel);
       persistSession(data);

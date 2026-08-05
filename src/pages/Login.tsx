@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, LockKeyhole, Mail, ShoppingBag, Truck, UserRound } from 'lucide-react';
+import { ArrowLeft, Loader2, LockKeyhole, Mail, Shield, ShoppingBag, Truck, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,7 @@ export default function Login() {
   const [erroGoogle, setErroGoogle] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarContingencia, setMostrarContingencia] = useState(false);
   const nome = configuracao?.nome_plataforma || 'Delivery';
 
   const concluir = () => navigate(
@@ -58,6 +59,19 @@ export default function Login() {
     concluir();
   };
 
+  const autenticarEquipeGoogle = useCallback(async (credential: string) => {
+    setLoading(true);
+    setErroGoogle('');
+    const result = await signInWithGoogle(credential, 'equipe');
+    setLoading(false);
+    if (!result.success) {
+      toast({ title: 'Acesso não autorizado', description: result.error, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Acesso realizado', description: `Bem-vindo(a) ao ${nome}.` });
+    concluir();
+  }, [nome, signInWithGoogle, toast]);
+
   return (
     <main className="delivery-auth-page">
       <section className="delivery-auth-showcase" aria-label={`Acesso ao ${nome}`}>
@@ -88,12 +102,24 @@ export default function Login() {
           </header>
 
           {equipe ? (
-            <form className="delivery-auth-form" onSubmit={autenticarEquipe}>
+            <div className="delivery-auth-form">
+              <div className="delivery-team-google-info">
+                <Shield />
+                <span><strong>Conta autorizada pela gerência</strong><small>Use o Google vinculado ao e-mail cadastrado no dashboard.</small></span>
+              </div>
+              <GoogleSignInButton disabled={loading} onCredential={autenticarEquipeGoogle} onUnavailable={setErroGoogle} />
+              {loading && <p role="status"><Loader2 className="animate-spin" /> Validando autorização...</p>}
+              {erroGoogle && <p role="alert">{erroGoogle}</p>}
+              <button type="button" className="delivery-auth-guest" onClick={() => setMostrarContingencia((value) => !value)}>
+                {mostrarContingencia ? 'Ocultar acesso de contingência' : 'Acessar com e-mail e senha'}
+              </button>
+              {mostrarContingencia && <form className="delivery-auth-form delivery-auth-contingency" onSubmit={autenticarEquipe}>
               <div><Label htmlFor="team-email">E-mail</Label><div className="delivery-auth-input"><Mail /><Input id="team-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div></div>
               <div><div className="delivery-auth-label-row"><Label htmlFor="team-password">Senha</Label><Link to="/forgot-password">Recuperar acesso</Link></div><div className="delivery-auth-input"><LockKeyhole /><Input id="team-password" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required /></div></div>
               <Button className="delivery-auth-submit btn-primary" disabled={loading}>{loading ? <><Loader2 className="animate-spin" /> Entrando...</> : 'Entrar'}</Button>
-              <Link className="delivery-auth-guest" to="/login">Voltar ao acesso com Google</Link>
-            </form>
+              </form>}
+              <Link className="delivery-auth-guest" to="/login">Voltar ao acesso de clientes</Link>
+            </div>
           ) : (
             <div className="delivery-auth-form">
               <fieldset className="delivery-account-type" disabled={loading}>
