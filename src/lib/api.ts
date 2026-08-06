@@ -104,6 +104,7 @@ const requiresAuthentication = (path: string, method: string): boolean => {
     '/perfil',
     '/chat',
     '/realtime',
+    '/relatorios',
   ];
 
   if (protectedPrefixes.some((prefix) => path === prefix || path.startsWith(prefix))) {
