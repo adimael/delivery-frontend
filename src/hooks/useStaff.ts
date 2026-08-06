@@ -71,7 +71,8 @@ export const useStaff = () => {
     telefone: string; 
     tipo_usuario: StaffTipo; 
     email: string; 
-    senha: string; 
+    senha?: string;
+    acesso_google?: boolean;
   }) => {
     try {
 
@@ -82,7 +83,11 @@ export const useStaff = () => {
           telefone: staffData.telefone,
           tipo_usuario: staffData.tipo_usuario,
           email: staffData.email,
-          password: staffData.senha
+          acesso_google: staffData.acesso_google === true,
+          ...(staffData.acesso_google ? {} : {
+            password: staffData.senha,
+            senha: staffData.senha,
+          }),
         }),
       });
 
