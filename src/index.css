@@ -2908,6 +2908,102 @@
   box-shadow: 0 13px 30px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
+.delivery-auth-divider {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 24px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.delivery-auth-divider::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: hsl(var(--border));
+}
+
+.delivery-auth-divider span {
+  position: relative;
+  padding-inline: 0.8rem;
+  background: hsl(var(--card));
+}
+
+.delivery-auth-email-toggle {
+  width: 100%;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid hsl(var(--border));
+  border-radius: 17px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.delivery-auth-email-toggle:hover {
+  transform: translateY(-1px);
+  border-color: hsl(var(--primary));
+  background: hsl(var(--muted) / 0.35);
+}
+
+.delivery-auth-email-toggle > svg {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: hsl(var(--primary));
+}
+
+.delivery-auth-email-toggle > span { display: grid; gap: 0.2rem; }
+.delivery-auth-email-toggle strong { font-size: 0.96rem; }
+.delivery-auth-email-toggle small { color: hsl(var(--muted-foreground)); line-height: 1.35; }
+
+.delivery-auth-password-flow {
+  margin-top: 0;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 18px;
+  background: hsl(var(--muted) / 0.2);
+}
+
+.delivery-auth-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: 14px;
+  background: hsl(var(--muted));
+}
+
+.delivery-auth-mode button {
+  min-height: 46px;
+  padding: 0.5rem;
+  border-radius: 11px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.delivery-auth-mode button.is-active {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  box-shadow: 0 5px 16px hsl(var(--foreground) / 0.08);
+}
+
+.delivery-auth-password-hint {
+  margin-top: -0.45rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .delivery-google-login-target > div,
 .delivery-google-login-target iframe { max-width: 100% !important; }
 

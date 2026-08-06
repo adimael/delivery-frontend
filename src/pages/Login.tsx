@@ -12,7 +12,7 @@ import { useEstabelecimento } from '@/hooks/useEstabelecimento';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const { configuracao } = useEstabelecimento();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -23,6 +23,10 @@ export default function Login() {
   const [erroGoogle, setErroGoogle] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [nomeCompleto, setNomeCompleto] = useState('');
+  const [modoEmail, setModoEmail] = useState<'login' | 'cadastro'>('login');
+  const [mostrarAcessoEmail, setMostrarAcessoEmail] = useState(false);
   const [mostrarContingencia, setMostrarContingencia] = useState(false);
   const [mostrarAcessoEquipe, setMostrarAcessoEquipe] = useState(false);
   const nome = configuracao?.nome_plataforma || 'Delivery';
@@ -61,6 +65,50 @@ export default function Login() {
     concluir();
   };
 
+  const autenticarComEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const emailNormalizado = email.trim().toLowerCase();
+    if (modoEmail === 'cadastro' && senha !== confirmarSenha) {
+      toast({
+        title: 'As senhas não coincidem',
+        description: 'Digite a mesma senha nos dois campos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    const result = modoEmail === 'login'
+      ? await signIn(emailNormalizado, senha)
+      : await signUp(emailNormalizado, senha, nomeCompleto.trim(), papel);
+    setLoading(false);
+
+    if (!result.success) {
+      toast({
+        title: modoEmail === 'login' ? 'Não foi possível entrar' : 'Não foi possível concluir o cadastro',
+        description: result.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if ('pendingApproval' in result && result.pendingApproval) {
+      toast({
+        title: 'Cadastro aguardando aprovação',
+        description: 'A gerência precisa aprovar o acesso de entregador antes do primeiro login.',
+      });
+      setModoEmail('login');
+      setSenha('');
+      setConfirmarSenha('');
+      return;
+    }
+
+    toast({
+      title: modoEmail === 'login' ? 'Acesso realizado' : 'Cadastro concluído',
+      description: `Bem-vindo(a) ao ${nome}.`,
+    });
+    concluir();
+  };
+
   const autenticarEquipeGoogle = useCallback(async (credential: string) => {
     setLoading(true);
     setErroGoogle('');
@@ -83,8 +131,8 @@ export default function Login() {
         <div className="delivery-auth-brand"><Logo /></div>
         <div className="delivery-auth-message">
           <span className="delivery-auth-kicker">Seu pedido, do seu jeito</span>
-          <h1>Entre com sua conta Google.</h1>
-          <p>Sem cadastro e sem senha para decorar. Seus endereços e pedidos continuam protegidos.</p>
+          <h1>Entre do jeito que preferir.</h1>
+          <p>Use sua conta Google ou continue com e-mail e senha. Seus endereços e pedidos permanecem vinculados à sua conta.</p>
         </div>
         <div className="delivery-auth-benefits">
           <span><ShoppingBag /> Pedidos organizados</span><span><Truck /> Acompanhamento fácil</span>
@@ -100,7 +148,7 @@ export default function Login() {
           <header>
             <span className="delivery-auth-kicker">Área segura</span>
             <h2>{equipe ? 'Acesso da equipe' : 'Como deseja entrar?'}</h2>
-            <p>{equipe ? 'Acesso exclusivo para gerente e funcionários do Deliciê.' : 'Escolha o perfil e continue com o Google.'}</p>
+            <p>{equipe ? 'Acesso exclusivo para gerente e funcionários do Deliciê.' : 'O Google é mais rápido, mas você também pode usar e-mail e senha.'}</p>
           </header>
 
           {equipe ? (
@@ -132,6 +180,60 @@ export default function Login() {
               <GoogleSignInButton disabled={loading} onCredential={autenticarGoogle} onUnavailable={setErroGoogle} />
               {loading && <p role="status"><Loader2 className="animate-spin" /> Validando sua conta...</p>}
               {erroGoogle && <p role="alert">{erroGoogle}</p>}
+
+              <div className="delivery-auth-divider"><span>ou</span></div>
+              <button
+                type="button"
+                className="delivery-auth-email-toggle"
+                aria-expanded={mostrarAcessoEmail}
+                onClick={() => setMostrarAcessoEmail(value => !value)}
+              >
+                <Mail />
+                <span>
+                  <strong>{mostrarAcessoEmail ? 'Ocultar acesso por e-mail' : 'Entrar ou cadastrar com e-mail'}</strong>
+                  <small>Para clientes que já possuem senha ou não usam Google</small>
+                </span>
+              </button>
+
+              {mostrarAcessoEmail && (
+                <form className="delivery-auth-form delivery-auth-password-flow" onSubmit={autenticarComEmail}>
+                  <div className="delivery-auth-mode" role="group" aria-label="Escolha entrar ou cadastrar">
+                    <button type="button" className={modoEmail === 'login' ? 'is-active' : ''} onClick={() => setModoEmail('login')}>Já tenho cadastro</button>
+                    <button type="button" className={modoEmail === 'cadastro' ? 'is-active' : ''} onClick={() => setModoEmail('cadastro')}>Criar cadastro</button>
+                  </div>
+
+                  {modoEmail === 'cadastro' && <div>
+                    <Label htmlFor="customer-name">Nome completo</Label>
+                    <div className="delivery-auth-input"><UserRound /><Input id="customer-name" autoComplete="name" value={nomeCompleto} onChange={event => setNomeCompleto(event.target.value)} required minLength={2} maxLength={120} /></div>
+                  </div>}
+
+                  <div>
+                    <Label htmlFor="customer-email">E-mail</Label>
+                    <div className="delivery-auth-input"><Mail /><Input id="customer-email" type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required /></div>
+                  </div>
+
+                  <div>
+                    <div className="delivery-auth-label-row">
+                      <Label htmlFor="customer-password">Senha</Label>
+                      {modoEmail === 'login' && <Link to="/forgot-password">Recuperar acesso</Link>}
+                    </div>
+                    <div className="delivery-auth-input"><LockKeyhole /><Input id="customer-password" type="password" autoComplete={modoEmail === 'login' ? 'current-password' : 'new-password'} value={senha} onChange={event => setSenha(event.target.value)} required minLength={8} maxLength={128} /></div>
+                  </div>
+
+                  {modoEmail === 'cadastro' && <>
+                    <div>
+                      <Label htmlFor="customer-password-confirmation">Confirmar senha</Label>
+                      <div className="delivery-auth-input"><LockKeyhole /><Input id="customer-password-confirmation" type="password" autoComplete="new-password" value={confirmarSenha} onChange={event => setConfirmarSenha(event.target.value)} required minLength={8} maxLength={128} /></div>
+                    </div>
+                    <p className="delivery-auth-password-hint">Use ao menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.</p>
+                  </>}
+
+                  <Button className="delivery-auth-submit btn-primary" disabled={loading}>
+                    {loading ? <><Loader2 className="animate-spin" /> Aguarde...</> : modoEmail === 'login' ? 'Entrar com e-mail' : 'Criar minha conta'}
+                  </Button>
+                </form>
+              )}
+
               <button type="button" className="delivery-auth-guest" onClick={() => navigate('/')}>Continuar sem conta</button>
               <div className="delivery-team-reveal">
                 <div className="delivery-team-reveal-check">
