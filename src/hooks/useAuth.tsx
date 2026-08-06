@@ -41,6 +41,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const restore = async () => {
       const token = localStorage.getItem('authToken');
       const refreshToken = localStorage.getItem('refreshToken');
+      let cachedProfile: UserProfile | null = null;
+      try {
+        const cached = JSON.parse(localStorage.getItem('user') || 'null');
+        if (cached?.id || cached?.uuid) cachedProfile = normalizeProfile(cached);
+      } catch {
+        cachedProfile = null;
+      }
       if (!token && !refreshToken) {
         setLoading(false);
         return;
@@ -48,11 +55,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const sessionReady = await ensureFreshSession();
         if (!sessionReady) {
+          // Se o refresh continua armazenado, houve indisponibilidade transitória,
+          // não rejeição da credencial. Preserva a conta para uma nova tentativa.
+          if (localStorage.getItem('refreshToken') && cachedProfile) {
+            setUser(cachedProfile);
+            return;
+          }
           throw new Error('Sessão expirada.');
         }
-        const profile = normalizeProfile(await authAPI.getProfile());
-        localStorage.setItem('user', JSON.stringify(profile));
-        setUser(profile);
+        if (cachedProfile) setUser(cachedProfile);
+        try {
+          const profile = normalizeProfile(await authAPI.getProfile());
+          localStorage.setItem('user', JSON.stringify(profile));
+          setUser(profile);
+        } catch (error) {
+          // Uma indisponibilidade temporária do endpoint de perfil não encerra
+          // uma sessão cuja assinatura e validade já foram confirmadas.
+          if (!cachedProfile) throw error;
+        }
       } catch {
         localStorage.removeItem('authToken');
         localStorage.removeItem('refreshToken');

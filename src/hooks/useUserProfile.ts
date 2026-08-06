@@ -42,12 +42,21 @@ export const useUserProfile = () => {
         setLoading(false);
         return;
       }
+      setProfile((current) => current ?? ({
+        ...user,
+        criado_em: '',
+        atualizado_em: '',
+      } as UserProfile));
       try {
-        // Buscar perfil do backend usando helper
-        const data = await authAPI.getProfile(user.id);
-        setProfile(data);
+        const data = await authAPI.getProfile();
+        setProfile({
+          ...data,
+          id: data.id ?? data.uuid ?? user.id,
+          criado_em: data.criado_em ?? '',
+          atualizado_em: data.atualizado_em ?? '',
+        });
       } catch (error) {
-        setProfile(null);
+        // Mantém os dados seguros já recebidos no login em falhas transitórias.
       }
       setLoading(false);
     };

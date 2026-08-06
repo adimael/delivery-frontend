@@ -53,11 +53,15 @@ export const refreshSession = async (): Promise<boolean> => {
       localStorage.setItem('refreshToken', data.refresh_token);
       if (data.usuario) localStorage.setItem('user', JSON.stringify(data.usuario));
       return true;
-    } catch {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.dispatchEvent(new CustomEvent('delivery:session-expired'));
+    } catch (error) {
+      const sessaoRejeitada = error instanceof ApiError
+        && [400, 401, 403].includes(error.status);
+      if (sessaoRejeitada) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.dispatchEvent(new CustomEvent('delivery:session-expired'));
+      }
       return false;
     } finally {
       refreshPromise = null;
