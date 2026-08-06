@@ -9,10 +9,6 @@
       "destination": "https://viacep.com.br/ws/:cep/json/"
     },
     {
-      "source": "/delivery/:path*",
-      "destination": "https://vupi.us/delivery/:path*"
-    },
-    {
       "source": "/:path*",
       "destination": "/index.html"
     }

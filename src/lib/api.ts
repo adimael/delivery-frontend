@@ -1,6 +1,15 @@
 const DEFAULT_API_URL = 'https://vupi.us/delivery/v1';
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/+$/, '');
+const configuredApiUrl = String(import.meta.env.VITE_API_URL || '').trim();
+
+// Em produção, uma URL relativa faria a Vercel atuar como proxy reverso. Além
+// de uma etapa desnecessária, isso mascara o IP do cliente nos logs da API.
+// O proxy relativo permanece disponível somente no desenvolvimento local.
+export const API_BASE_URL = (
+  import.meta.env.PROD && configuredApiUrl.startsWith('/')
+    ? DEFAULT_API_URL
+    : configuredApiUrl || DEFAULT_API_URL
+).replace(/\/+$/, '');
 export const DELIVERY_API_KEY = String(import.meta.env.VITE_DELIVERY_API_KEY || '').trim();
 export const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL || API_BASE_URL.replace(/\/v1$/, '')).replace(/\/+$/, '');
 
