@@ -8,7 +8,12 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize(options: { client_id: string; callback: (response: { credential?: string }) => void; ux_mode: 'popup' }): void;
+          initialize(options: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+            ux_mode: 'popup';
+            use_fedcm_for_button?: boolean;
+          }): void;
           renderButton(element: HTMLElement, options: Record<string, unknown>): void;
           cancel(): void;
         };
@@ -42,6 +47,7 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
         window.google.accounts.id.initialize({
           client_id: clientId,
           ux_mode: 'popup',
+          use_fedcm_for_button: true,
           callback: ({ credential }) => credential && activeCredentialHandler?.(credential),
         });
         initializedClientId = clientId;
