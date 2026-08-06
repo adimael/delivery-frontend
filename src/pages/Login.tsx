@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, LockKeyhole, Mail, Shield, ShoppingBag, Truck, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -23,6 +24,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarContingencia, setMostrarContingencia] = useState(false);
+  const [mostrarAcessoEquipe, setMostrarAcessoEquipe] = useState(false);
   const nome = configuracao?.nome_plataforma || 'Delivery';
 
   const concluir = () => navigate(
@@ -131,10 +133,22 @@ export default function Login() {
               {loading && <p role="status"><Loader2 className="animate-spin" /> Validando sua conta...</p>}
               {erroGoogle && <p role="alert">{erroGoogle}</p>}
               <button type="button" className="delivery-auth-guest" onClick={() => navigate('/')}>Continuar sem conta</button>
-              <Link className="delivery-team-access" to="/login?equipe=1">
-                <LockKeyhole />
-                <span><strong>Acesso da equipe Deliciê</strong><small>Exclusivo para gerente e funcionários</small></span>
-              </Link>
+              <div className="delivery-team-reveal">
+                <div className="delivery-team-reveal-check">
+                  <Checkbox
+                    id="mostrar-acesso-equipe"
+                    checked={mostrarAcessoEquipe}
+                    onCheckedChange={(checked) => setMostrarAcessoEquipe(checked === true)}
+                  />
+                  <Label htmlFor="mostrar-acesso-equipe">Sou da equipe Deliciê</Label>
+                </div>
+                {mostrarAcessoEquipe && (
+                  <Link className="delivery-team-access" to="/login?equipe=1">
+                    <LockKeyhole />
+                    <span><strong>Acesso da equipe Deliciê</strong><small>Exclusivo para gerente e funcionários</small></span>
+                  </Link>
+                )}
+              </div>
             </div>
           )}
           <p className="delivery-auth-terms">Ao continuar, você declara estar de acordo com os termos e a política de privacidade.</p>
