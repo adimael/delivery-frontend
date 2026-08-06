@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { apiRequest } from '@/lib/api';
+import { ApiError, apiRequest } from '@/lib/api';
 import { startSmartPolling } from '@/lib/smartPolling';
 import {
   isRealtimeConnected,
@@ -48,18 +48,40 @@ const Chat = ({ userType }: ChatProps) => {
   const [enviando, setEnviando] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversaAtualRef = useRef<string | null>(null);
+  const mensagensEmCursoRef = useRef<Map<string, Promise<void>>>(new Map());
+  const conversasEmCursoRef = useRef<Promise<void> | null>(null);
+  const chatCooldownRef = useRef(0);
+  const realtimeTimerRef = useRef<number | null>(null);
   const iniciador = user?.tipo_usuario === 'cliente' || user?.tipo_usuario === 'entregador';
 
   const carregarMensagens = useCallback(async (conversaId: string) => {
-    const data = await apiRequest(`/chat/${conversaId}/mensagens`);
-    setMensagens(Array.isArray(data) ? data.map((item) => ({
-      id: String(item.id ?? item.uuid),
-      mensagem: String(item.mensagem ?? ''),
-      criado_em: String(item.criado_em ?? new Date().toISOString()),
-      remetente_uuid: String(item.remetente_uuid ?? ''),
-      remetente_nome: item.remetente_nome,
-      remetente_tipo: item.remetente_tipo,
-    })) : []);
+    if (Date.now() < chatCooldownRef.current) return;
+    const existente = mensagensEmCursoRef.current.get(conversaId);
+    if (existente) return existente;
+    const requisicao = (async () => {
+      try {
+        const data = await apiRequest(`/chat/${conversaId}/mensagens`);
+        if (conversaAtualRef.current !== conversaId) return;
+        setMensagens(Array.isArray(data) ? data.map((item) => ({
+          id: String(item.id ?? item.uuid),
+          mensagem: String(item.mensagem ?? ''),
+          criado_em: String(item.criado_em ?? new Date().toISOString()),
+          remetente_uuid: String(item.remetente_uuid ?? ''),
+          remetente_nome: item.remetente_nome,
+          remetente_tipo: item.remetente_tipo,
+        })) : []);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 429) {
+          chatCooldownRef.current = Date.now() + 60_000;
+        }
+        throw error;
+      } finally {
+        mensagensEmCursoRef.current.delete(conversaId);
+      }
+    })();
+    mensagensEmCursoRef.current.set(conversaId, requisicao);
+    return requisicao;
   }, []);
 
   const selecionarConversa = useCallback(async (id: string, atribuir = false) => {
@@ -67,6 +89,7 @@ const Chat = ({ userType }: ChatProps) => {
       if (atribuir && user?.tipo_usuario !== 'gerente') {
         await apiRequest(`/chat/${id}/atendente`, { method: 'POST', body: '{}' });
       }
+      conversaAtualRef.current = id;
       setConversaAtual(id);
       await carregarMensagens(id);
     } catch {
@@ -80,7 +103,9 @@ const Chat = ({ userType }: ChatProps) => {
 
   const carregarConversas = useCallback(async () => {
     if (!user) return;
-    try {
+    if (Date.now() < chatCooldownRef.current) return;
+    if (conversasEmCursoRef.current) return conversasEmCursoRef.current;
+    const requisicao = (async () => { try {
       let data = await apiRequest('/chat');
       if (iniciador && (!Array.isArray(data) || data.length === 0)) {
         const criada = await apiRequest('/chat', {
@@ -99,33 +124,46 @@ const Chat = ({ userType }: ChatProps) => {
       })) : [];
       setConversas(lista);
 
-      const atualAindaExiste = lista.some((item) => item.id === conversaAtual);
+      const conversaSelecionada = conversaAtualRef.current;
+      const atualAindaExiste = lista.some((item) => item.id === conversaSelecionada);
       if (!atualAindaExiste && iniciador && lista[0]) {
+        conversaAtualRef.current = lista[0].id;
         setConversaAtual(lista[0].id);
         await carregarMensagens(lista[0].id);
-      } else if (conversaAtual) {
-        await carregarMensagens(conversaAtual);
+      } else if (conversaSelecionada) {
+        await carregarMensagens(conversaSelecionada);
       }
-    } catch {
-      setConversas([]);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        chatCooldownRef.current = Date.now() + 60_000;
+      }
     } finally {
       setCarregando(false);
-    }
-  }, [carregarMensagens, conversaAtual, iniciador, user]);
+      conversasEmCursoRef.current = null;
+    } })();
+    conversasEmCursoRef.current = requisicao;
+    return requisicao;
+  }, [carregarMensagens, iniciador, user]);
 
   useEffect(() => {
     if (!user) return;
     void carregarConversas();
     const unsubscribeEvent = subscribeRealtime('delivery.chat.updated', () => {
-      void carregarConversas();
+      if (realtimeTimerRef.current !== null) window.clearTimeout(realtimeTimerRef.current);
+      realtimeTimerRef.current = window.setTimeout(() => {
+        realtimeTimerRef.current = null;
+        void carregarConversas();
+      }, 350);
     });
+    let estavaOnline = isRealtimeConnected();
     const unsubscribeState = subscribeRealtimeState((online) => {
-      if (online) void carregarConversas();
+      if (online && !estavaOnline) void carregarConversas();
+      estavaOnline = online;
     });
     const stopFallback = startSmartPolling(() => (
       isRealtimeConnected() ? undefined : carregarConversas()
     ), {
-      activeInterval: 30_000,
+      activeInterval: 60_000,
       hiddenInterval: 2 * 60_000,
       maxInterval: 5 * 60_000,
     });
@@ -134,6 +172,7 @@ const Chat = ({ userType }: ChatProps) => {
       unsubscribeEvent();
       unsubscribeState();
       stopFallback();
+      if (realtimeTimerRef.current !== null) window.clearTimeout(realtimeTimerRef.current);
     };
   }, [carregarConversas, user]);
 
@@ -173,9 +212,9 @@ const Chat = ({ userType }: ChatProps) => {
 
   return (
     <DashboardLayout title={titulo} userType={userType}>
-      <div className="grid min-h-[calc(100dvh-10rem)] gap-4 lg:grid-cols-[minmax(230px,30%)_1fr]">
+      <div className="delivery-chat-layout">
         {!iniciador && (
-          <Card className="overflow-hidden">
+          <Card className="delivery-chat-conversations overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MessageCircle className="h-5 w-5" /> Conversas
@@ -213,7 +252,7 @@ const Chat = ({ userType }: ChatProps) => {
           </Card>
         )}
 
-        <Card className="flex min-h-[65dvh] flex-col overflow-hidden">
+        <Card className="delivery-chat-panel flex flex-col overflow-hidden">
           <CardHeader className="border-b pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Headphones className="h-5 w-5" />
@@ -224,7 +263,7 @@ const Chat = ({ userType }: ChatProps) => {
             </p>
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col p-3 sm:p-5">
-            <div className="flex-1 space-y-3 overflow-y-auto pb-4">
+            <div className="delivery-chat-messages flex-1 space-y-3 overflow-y-auto pb-4">
               {mensagens.map((item) => {
                 const minha = item.remetente_uuid === user?.id;
                 return (

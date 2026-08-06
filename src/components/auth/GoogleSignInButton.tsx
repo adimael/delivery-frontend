@@ -47,7 +47,10 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
         window.google.accounts.id.initialize({
           client_id: clientId,
           ux_mode: 'popup',
-          use_fedcm_for_button: true,
+          // O fluxo FedCM pode tentar recuperar uma credencial mesmo quando o
+          // usuário escolhe entrar por senha, gerando NetworkError no console.
+          // O botão continua seguro usando o popup oficial do Google.
+          use_fedcm_for_button: false,
           callback: ({ credential }) => credential && activeCredentialHandler?.(credential),
         });
         initializedClientId = clientId;

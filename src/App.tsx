@@ -60,6 +60,7 @@ import ManagerSettings from "@/pages/dashboard/ManagerSettings";
 import ManagerProfile from "@/pages/dashboard/ManagerProfile";
 import ManagerChat from "@/pages/dashboard/ManagerChat";
 import ManagerCoupons from "@/pages/dashboard/ManagerCoupons";
+import ManagerCustomers from "@/pages/dashboard/ManagerCustomers";
 
 // Invoice Validation
 import { InvoiceValidation } from "@/pages/InvoiceValidation";
@@ -312,6 +313,14 @@ function App() {
               element={
                 <ProtectedRoute tiposPermitidos={["gerente"]}>
                   <ManagerCategories />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/gerente/clientes"
+              element={
+                <ProtectedRoute tiposPermitidos={["gerente"]}>
+                  <ManagerCustomers />
                 </ProtectedRoute>
               }
             />

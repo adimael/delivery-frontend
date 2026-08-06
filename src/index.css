@@ -1997,6 +1997,53 @@
   gap: clamp(16px, 2vw, 24px);
 }
 
+/* Chat ocupa a área útil inteira sem encolher quando há poucas mensagens. */
+.delivery-chat-layout {
+  display: grid;
+  height: calc(100dvh - 86px - clamp(36px, 6vw, 84px));
+  min-height: 620px;
+  gap: 16px;
+  grid-template-columns: minmax(230px, 30%) minmax(0, 1fr);
+}
+
+.delivery-chat-layout > .delivery-chat-panel:only-child {
+  grid-column: 1 / -1;
+}
+
+.delivery-chat-conversations,
+.delivery-chat-panel,
+.delivery-chat-messages {
+  min-height: 0;
+}
+
+.delivery-chat-panel {
+  height: 100%;
+}
+
+@media (max-width: 1023px) {
+  .delivery-chat-layout {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .delivery-chat-conversations {
+    max-height: 36dvh;
+  }
+
+  .delivery-chat-panel {
+    height: min(72dvh, 760px);
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 520px) {
+  .delivery-chat-panel {
+    height: calc(100dvh - 150px);
+    min-height: 520px;
+  }
+}
+
 .dashboard-content [class*="rounded-lg"][class*="border"][class*="bg-card"] {
   border-color: var(--dashboard-line);
   border-radius: 22px;

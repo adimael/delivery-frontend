@@ -12,6 +12,7 @@ import {
   Ticket,
   Truck,
   User,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -56,6 +57,7 @@ const linksPorPerfil = {
     ["/dashboard/gerente/pedidos", ShoppingBag, "Pedidos"],
     ["/dashboard/gerente/produtos", Package, "Produtos"],
     ["/dashboard/gerente/categorias", Package, "Categorias"],
+    ["/dashboard/gerente/clientes", UserRound, "Clientes"],
     ["/dashboard/gerente/funcionarios", Users, "Funcionários"],
     ["/dashboard/gerente/entregadores", Truck, "Entregadores"],
     ["/dashboard/gerente/relatorios", BarChart3, "Relatórios"],
