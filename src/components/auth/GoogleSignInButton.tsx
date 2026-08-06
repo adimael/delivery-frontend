@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 
+let initializedClientId: string | null = null;
+let activeCredentialHandler: ((credential: string) => void) | null = null;
+
 declare global {
   interface Window {
     google?: {
@@ -20,22 +23,32 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
   const container = useRef<HTMLDivElement>(null);
   const buttonTarget = useRef<HTMLDivElement>(null);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  const credentialHandler = useRef(onCredential);
+  const unavailableHandler = useRef(onUnavailable);
+  credentialHandler.current = onCredential;
+  unavailableHandler.current = onUnavailable;
 
   useEffect(() => {
     if (!clientId) {
-      onUnavailable('Login com Google ainda não foi configurado.');
+      unavailableHandler.current('Login com Google ainda não foi configurado.');
       return;
     }
     let active = true;
+    let lastWidth = 0;
+    let resizeFrame = 0;
     const render = () => {
       if (!active || !window.google || !buttonTarget.current) return;
+      if (initializedClientId !== clientId) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          ux_mode: 'popup',
+          callback: ({ credential }) => credential && activeCredentialHandler?.(credential),
+        });
+        initializedClientId = clientId;
+      }
       buttonTarget.current.replaceChildren();
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        ux_mode: 'popup',
-        callback: ({ credential }) => credential && onCredential(credential),
-      });
       const availableWidth = Math.max(240, Math.floor(buttonTarget.current.getBoundingClientRect().width));
+      lastWidth = availableWidth;
       window.google.accounts.id.renderButton(buttonTarget.current, {
         type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
         shape: 'rectangular', width: Math.min(400, availableWidth), locale: 'pt-BR',
@@ -51,13 +64,25 @@ export function GoogleSignInButton({ disabled, onCredential, onUnavailable }: Pr
       script.defer = true;
       script.dataset.googleIdentity = 'true';
       script.onload = render;
-      script.onerror = () => onUnavailable('Não foi possível carregar o login do Google.');
+      script.onerror = () => unavailableHandler.current('Não foi possível carregar o login do Google.');
       document.head.appendChild(script);
     }
-    const observer = new ResizeObserver(() => window.google && render());
+    activeCredentialHandler = (credential) => credentialHandler.current(credential);
+    const observer = new ResizeObserver(() => {
+      if (!buttonTarget.current) return;
+      const width = Math.max(240, Math.floor(buttonTarget.current.getBoundingClientRect().width));
+      if (width === lastWidth) return;
+      window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(render);
+    });
     if (buttonTarget.current) observer.observe(buttonTarget.current);
-    return () => { active = false; observer.disconnect(); };
-  }, [clientId, onCredential, onUnavailable]);
+    return () => {
+      active = false;
+      observer.disconnect();
+      window.cancelAnimationFrame(resizeFrame);
+      activeCredentialHandler = null;
+    };
+  }, [clientId]);
 
   return (
     <div
