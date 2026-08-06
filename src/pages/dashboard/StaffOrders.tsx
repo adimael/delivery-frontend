@@ -12,6 +12,7 @@ import { useEstabelecimento } from "@/hooks/useEstabelecimento";
 import { DeliveryApprovalPanel } from "@/components/delivery/DeliveryApprovalPanel";
 import { OrderItemDetails } from "@/components/orders/OrderItemDetails";
 import { apiRequest } from "@/lib/api";
+import { formatBrazilianPhone } from "@/lib/phone";
 
 type ItemPedido = Pedido['itens_pedido'][number];
 
@@ -129,9 +130,9 @@ const StaffOrders = () => {
 
   const handleViewInvoice = (pedido: any) => {
     // Transformar dados do pedido para o formato da nota fiscal
-    const telefoneCliente = pedido.telefone_cliente
+    const telefoneCliente = formatBrazilianPhone(pedido.telefone_cliente
       || pedido.perfis?.telefone
-      || '';
+      || '');
     
     const items = pedido.itens_pedido.map(item => {
       let customizations: any = {
@@ -216,19 +217,18 @@ const StaffOrders = () => {
     return nextStatus ? statusLabelMap[nextStatus] : null;
   };
 
-  const getTelefoneCliente = (pedido: any) => {
-    if (pedido.tipo_cliente === 'convidado') {
+  const getTelefoneCliente = (pedido: Pedido): string => {
+    let telefone = pedido.telefone_cliente || pedido.perfis?.telefone || '';
+    if (!telefone && pedido.tipo_cliente === 'convidado') {
       try {
         const primeiroItem = pedido.itens_pedido[0];
         if (primeiroItem?.observacoes) {
           const parsed = JSON.parse(primeiroItem.observacoes);
-          return parsed.telefone_cliente || '';
+          telefone = parsed.telefone_cliente || '';
         }
-      } catch (e) {
-        return '';
-      }
+      } catch { /* compatibilidade com pedidos antigos */ }
     }
-    return '';
+    return formatBrazilianPhone(telefone);
   };
 
   // Função para verificar se é um pedido para retirada no local

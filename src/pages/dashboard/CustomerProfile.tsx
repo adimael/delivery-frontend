@@ -48,7 +48,6 @@ const CustomerProfile = () => {
     loading, 
     loadingEnderecos,
     updateProfile, 
-    updatePassword,
     addEndereco,
     updateEndereco,
     deleteEndereco,
@@ -64,11 +63,6 @@ const CustomerProfile = () => {
   const [nomeCompleto, setNomeCompleto] = useState(profile?.nome_completo || "");
   const [telefone, setTelefone] = useState(profile?.telefone || "");
   
-  // Estados para alteração de senha
-  const [senhaAtual, setSenhaAtual] = useState("");
-  const [novaSenha, setNovaSenha] = useState("");
-  const [confirmacaoSenha, setConfirmacaoSenha] = useState("");
-
   // Atualizar o estado do nome quando o profile carregar
   useEffect(() => {
     if (profile?.nome_completo) {
@@ -120,67 +114,6 @@ const CustomerProfile = () => {
     setNomeCompleto(profile?.nome_completo || "");
     setTelefone(profile?.telefone || "");
     setEditingProfile(false);
-  };
-
-  const handleAlterarSenha = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!senhaAtual || !novaSenha || !confirmacaoSenha) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (novaSenha !== confirmacaoSenha) {
-      toast({
-        title: "Erro",
-        description: "A nova senha e a confirmação não coincidem.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (novaSenha.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A nova senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoadingProfile(true);
-
-    try {
-      const success = await updatePassword(novaSenha);
-
-      if (!success) {
-        toast({
-          title: "Erro",
-          description: "Erro ao alterar a senha.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Sucesso",
-          description: "Senha alterada com sucesso.",
-        });
-        setSenhaAtual("");
-        setNovaSenha("");
-        setConfirmacaoSenha("");
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro inesperado ao alterar senha.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingProfile(false);
-    }
   };
 
   const handleSaveEndereco = async (enderecoData: Omit<Endereco, 'id' | 'criado_em'>) => {
@@ -383,58 +316,6 @@ const CustomerProfile = () => {
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Alteração de Senha */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Alterar Senha</CardTitle>
-            <CardDescription>Mantenha sua conta segura alterando sua senha regularmente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAlterarSenha} className="space-y-4">
-              <div>
-                <Label htmlFor="senha-atual">Senha Atual</Label>
-                <Input 
-                  id="senha-atual"
-                  type="password" 
-                  placeholder="••••••••"
-                  value={senhaAtual}
-                  onChange={(e) => setSenhaAtual(e.target.value)}
-                  disabled={loadingProfile}
-                />
-              </div>
-              <div>
-                <Label htmlFor="nova-senha">Nova Senha</Label>
-                <Input 
-                  id="nova-senha"
-                  type="password" 
-                  placeholder="••••••••"
-                  value={novaSenha}
-                  onChange={(e) => setNovaSenha(e.target.value)}
-                  disabled={loadingProfile}
-                />
-              </div>
-              <div>
-                <Label htmlFor="confirmar-senha">Confirmar Nova Senha</Label>
-                <Input 
-                  id="confirmar-senha"
-                  type="password" 
-                  placeholder="••••••••"
-                  value={confirmacaoSenha}
-                  onChange={(e) => setConfirmacaoSenha(e.target.value)}
-                  disabled={loadingProfile}
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="bg-kumekume-orange hover:bg-orange-600"
-                disabled={loadingProfile}
-              >
-                {loadingProfile ? "Alterando..." : "Alterar Senha"}
-              </Button>
-            </form>
           </CardContent>
         </Card>
 

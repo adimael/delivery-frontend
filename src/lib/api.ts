@@ -101,6 +101,7 @@ const requiresAuthentication = (path: string, method: string): boolean => {
     '/entregador',
     '/perfis',
     '/enderecos',
+    '/perfil',
     '/chat',
     '/realtime',
   ];
@@ -221,6 +222,10 @@ export const authAPI = {
   }),
   refresh: refreshSession,
   getProfile: () => apiRequest('/auth/profile'),
+  updateProfile: (data: unknown) => apiRequest('/perfil', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
 };
 
 export const enderecosAPI = {

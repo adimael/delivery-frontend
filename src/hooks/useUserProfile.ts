@@ -34,7 +34,7 @@ export const useUserProfile = () => {
   const [enderecos, setEnderecos] = useState<Endereco[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingEnderecos, setLoadingEnderecos] = useState(false);
-  const { user } = useAuth();
+  const { user, updateSessionProfile } = useAuth();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -83,17 +83,16 @@ export const useUserProfile = () => {
     if (!user || !profile) return false;
 
     try {
-      const response = await perfisAPI.update(user.id, {
+      const response = await authAPI.updateProfile(updates);
+
+      setProfile(prev => prev ? {
+        ...prev,
         ...updates,
-        atualizado_em: new Date().toISOString()
-      });
-
-      if (response.error) {
-        console.error('Erro ao atualizar perfil:', response.error);
-        return false;
-      }
-
-      setProfile(prev => prev ? { ...prev, ...updates, atualizado_em: new Date().toISOString() } : prev);
+        ...response,
+        id: response?.id ?? response?.uuid ?? prev.id,
+        atualizado_em: response?.atualizado_em ?? new Date().toISOString(),
+      } : prev);
+      updateSessionProfile({ ...updates, ...response });
       return true;
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
@@ -124,11 +123,7 @@ export const useUserProfile = () => {
     try {
       const isPrimeiro = enderecos.length === 0;
       const novoPrincipal = isPrimeiro || endereco.principal;
-      const payload = {
-        ...endereco,
-        usuario_id: user.id,
-        principal: novoPrincipal,
-      };
+      const payload = { ...endereco, principal: novoPrincipal };
       await enderecosAPI.addEndereco(payload);
       await fetchEnderecos();
       return true;

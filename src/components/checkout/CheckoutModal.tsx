@@ -107,7 +107,7 @@ export const CheckoutModal = ({
 }: CheckoutModalProps) => {
   const GUEST_ADDRESS_KEY = 'deliveryGuestAddress';
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateSessionProfile } = useAuth();
   const { items, clearCart, removeItem, removeSelections } = useCartStore();
   const { toast } = useToast();
   const { configuracao, estaAberto } = useEstabelecimento();
@@ -614,6 +614,27 @@ export const CheckoutModal = ({
           variant: "destructive",
         });
         return;
+      }
+      if (user) {
+        try {
+          const perfilAtualizado = await apiRequest('/perfil', {
+            method: 'PATCH',
+            body: JSON.stringify({
+              nome_completo: orderData.nomeDestinatario.trim(),
+              telefone: orderData.telefone.trim(),
+            }),
+          });
+          updateSessionProfile(perfilAtualizado);
+        } catch (error) {
+          toast({
+            title: 'Dados de contato não salvos',
+            description: error instanceof Error
+              ? error.message
+              : 'Não foi possível salvar os dados na sua conta.',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
       if (
         tipoEntrega === 'entrega'
