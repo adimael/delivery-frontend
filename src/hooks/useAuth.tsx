@@ -12,17 +12,20 @@ export interface UserProfile {
   tipo_usuario: TipoUsuario;
   ativo: boolean;
   status_aprovacao?: 'pendente' | 'aprovado' | 'rejeitado';
+  possui_senha?: boolean;
+  google_vinculado?: boolean;
 }
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   signUp: (email: string, password: string, nomeCompleto: string, tipoUsuario?: 'cliente' | 'entregador') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string, papel?: 'cliente' | 'entregador' | 'equipe') => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: (credential: string, papel: 'cliente' | 'entregador' | 'equipe') => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
+  enablePassword: (password: string, confirmation: string) => Promise<{ success: boolean; error?: string }>;
   updateSessionProfile: (updates: Partial<UserProfile>) => void;
 }
 
@@ -141,6 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password,
         senha: password,
         manter_sessao: true,
+        papel: tipoUsuario,
       });
       persistSession(data);
       return { success: true };
@@ -149,13 +153,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, papel: 'cliente' | 'entregador' | 'equipe' = 'cliente') => {
     try {
       const data = await authAPI.signin({
         email,
         password,
         senha: password,
         manter_sessao: true,
+        papel,
       });
       persistSession(data);
       return { success: true };
@@ -211,6 +216,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const enablePassword = async (password: string, confirmation: string) => {
+    if (!user) return { success: false, error: 'Usuário não autenticado.' };
+    try {
+      await apiRequest('/auth/enable-password', {
+        method: 'POST',
+        body: JSON.stringify({ senha: password, confirmar_senha: confirmation }),
+      });
+      updateSessionProfile({ possui_senha: true });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Erro ao habilitar senha.' };
+    }
+  };
+
   const updateSessionProfile = (updates: Partial<UserProfile>) => {
     setUser((current) => {
       if (!current) return current;
@@ -221,7 +240,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signOut, resetPassword, updatePassword, updateSessionProfile }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signOut, resetPassword, updatePassword, enablePassword, updateSessionProfile }}>
       {children}
     </AuthContext.Provider>
   );

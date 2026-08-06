@@ -56,7 +56,7 @@ export default function Login() {
   const autenticarEquipe = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    const result = await signIn(email.trim().toLowerCase(), senha);
+    const result = await signIn(email.trim().toLowerCase(), senha, 'equipe');
     setLoading(false);
     if (!result.success) {
       toast({ title: 'Não foi possível entrar', description: result.error, variant: 'destructive' });
@@ -79,7 +79,7 @@ export default function Login() {
 
     setLoading(true);
     const result = modoEmail === 'login'
-      ? await signIn(emailNormalizado, senha)
+      ? await signIn(emailNormalizado, senha, papel)
       : await signUp(emailNormalizado, senha, nomeCompleto.trim(), papel);
     setLoading(false);
 

@@ -12,6 +12,7 @@ import { Plus } from "lucide-react";
 import EnderecoForm from "@/components/profile/EnderecoForm";
 import EnderecoCard from "@/components/profile/EnderecoCard";
 import { Endereco } from "@/hooks/useUserProfile";
+import { EnablePasswordCard } from "@/components/profile/EnablePasswordCard";
 
 // Função para formatar telefone
 const formatTelefone = (value: string): string => {
@@ -318,6 +319,8 @@ const CustomerProfile = () => {
             </div>
           </CardContent>
         </Card>
+
+        <EnablePasswordCard possuiSenha={profile.possui_senha} />
 
         {/* Endereços */}
         <Card>

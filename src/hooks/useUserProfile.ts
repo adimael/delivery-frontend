@@ -10,6 +10,8 @@ export interface UserProfile {
   telefone?: string;
   tipo_usuario: 'cliente' | 'funcionario' | 'entregador' | 'gerente';
   ativo: boolean;
+  possui_senha?: boolean;
+  google_vinculado?: boolean;
   criado_em: string;
   atualizado_em: string;
 }

@@ -98,8 +98,8 @@ const ManagerStaff = ({ tipoUsuario = "funcionario" }: ManagerStaffProps) => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    const result = await excluirFuncionario(id);
+  const handleDelete = async (id: string, tipoUsuario: StaffTipo) => {
+    const result = await excluirFuncionario(id, tipoUsuario);
     
     if (result.success) {
       toast({
@@ -222,7 +222,7 @@ const ManagerStaff = ({ tipoUsuario = "funcionario" }: ManagerStaffProps) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(member.id)}
+                      onClick={() => handleDelete(member.id, member.tipo_usuario)}
                     >
                       <Trash2 className="mr-1 h-3 w-3" />
                       Excluir

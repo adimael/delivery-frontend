@@ -8,6 +8,7 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, Shield } from "lucide-react";
+import { EnablePasswordCard } from "@/components/profile/EnablePasswordCard";
 
 const DeliveryProfile = () => {
   const { profile, loading, updateProfile } = useUserProfile();
@@ -151,6 +152,8 @@ const DeliveryProfile = () => {
             </div>
           </CardContent>
         </Card>
+
+        <EnablePasswordCard possuiSenha={profile?.possui_senha} />
 
       </div>
     </DashboardLayout>

@@ -117,14 +117,16 @@ export const useStaff = () => {
     }
   };
 
-  const deleteStaff = async (id: string) => {
+  const deleteStaff = async (id: string, tipoUsuario: StaffMember['tipo_usuario']) => {
     try {
       await apiRequest(`/perfis/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ ativo: false }),
+        method: 'DELETE',
+        body: JSON.stringify({ tipo_usuario: tipoUsuario }),
       });
 
-      setStaff(prev => prev.filter(member => member.id !== id));
+      setStaff(prev => prev.filter(member =>
+        member.id !== id || member.tipo_usuario !== tipoUsuario
+      ));
       return { success: true };
     } catch (error) {
       console.error('Erro ao desativar membro da equipe:', error);
