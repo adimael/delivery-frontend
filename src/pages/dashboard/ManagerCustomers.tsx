@@ -2,6 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Eye, Mail, Phone, Search, ShieldCheck, UserRound, Users } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -54,6 +64,7 @@ export default function ManagerCustomers() {
   const [carregando, setCarregando] = useState(true);
   const [alterando, setAlterando] = useState<string | null>(null);
   const [selecionado, setSelecionado] = useState<Cliente | null>(null);
+  const [confirmacao, setConfirmacao] = useState<{ cliente: Cliente; ativo: boolean } | null>(null);
 
   const carregar = async () => {
     setCarregando(true);
@@ -91,6 +102,7 @@ export default function ManagerCustomers() {
         ? { ...item, ...atualizado, ativo }
         : item));
       setSelecionado((atual) => atual?.id === cliente.id ? { ...atual, ...atualizado, ativo } : atual);
+      setConfirmacao(null);
       toast({
         title: ativo ? 'Cliente ativado' : 'Cliente desativado',
         description: ativo
@@ -148,7 +160,7 @@ export default function ManagerCustomers() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-4 md:justify-end">
-                        <div className="flex items-center gap-2"><Label htmlFor={`cliente-${cliente.id}`} className="text-sm">{ativo ? 'Ativo' : 'Desativado'}</Label><Switch id={`cliente-${cliente.id}`} checked={ativo} disabled={alterando === cliente.id} onCheckedChange={(valor) => void alterarStatus(cliente, valor)} /></div>
+                        <div className="flex items-center gap-2"><Label htmlFor={`cliente-${cliente.id}`} className="text-sm">{ativo ? 'Ativo' : 'Desativado'}</Label><Switch id={`cliente-${cliente.id}`} checked={ativo} disabled={alterando === cliente.id} onCheckedChange={(valor) => setConfirmacao({ cliente, ativo: valor })} /></div>
                         <Button type="button" variant="outline" size="sm" onClick={() => setSelecionado(cliente)}><Eye className="mr-2 h-4 w-4" />Detalhes</Button>
                       </div>
                     </article>
@@ -171,11 +183,50 @@ export default function ManagerCustomers() {
               <div><dt className="text-muted-foreground">Telefone</dt><dd className="font-medium">{telefoneFormatado(selecionado.telefone)}</dd></div>
               <div><dt className="flex items-center gap-2 text-muted-foreground"><CalendarDays className="h-4 w-4" />Cadastro</dt><dd className="font-medium">{dataFormatada(selecionado.criado_em)}</dd></div>
             </dl>
-            <div className="flex items-center justify-between rounded-2xl border p-4"><div><strong>Acesso de cliente</strong><p className="text-xs text-muted-foreground">Não altera outros papéis da conta.</p></div><Switch checked={verdadeiro(selecionado.ativo)} disabled={alterando === selecionado.id} onCheckedChange={(valor) => void alterarStatus(selecionado, valor)} /></div>
+            <div className="flex items-center justify-between rounded-2xl border p-4"><div><strong>Acesso de cliente</strong><p className="text-xs text-muted-foreground">Não altera outros papéis da conta.</p></div><Switch checked={verdadeiro(selecionado.ativo)} disabled={alterando === selecionado.id} onCheckedChange={(valor) => setConfirmacao({ cliente: selecionado, ativo: valor })} /></div>
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">Por segurança, senhas não podem ser visualizadas nem alteradas pela gerência.</p>
           </div>}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmacao !== null} onOpenChange={(aberto) => !aberto && alterando === null && setConfirmacao(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmacao?.ativo ? 'Ativar acesso deste cliente?' : 'Desativar acesso deste cliente?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <span className="block">
+                Confirme se deseja {confirmacao?.ativo ? 'ativar' : 'desativar'} o acesso de cliente de:
+              </span>
+              <span className="block rounded-2xl border bg-muted/60 p-4 text-foreground">
+                <strong className="block text-base">{confirmacao?.cliente.nome_completo}</strong>
+                <span className="mt-1 block break-all text-sm text-muted-foreground">{confirmacao?.cliente.email}</span>
+              </span>
+              {!confirmacao?.ativo && (
+                <span className="block text-sm">
+                  O cliente não poderá acessar esta conta até que seja ativado novamente. Outros papéis da mesma conta não serão alterados.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={alterando !== null}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!confirmacao || alterando !== null}
+              className={!confirmacao?.ativo ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                if (confirmacao) void alterarStatus(confirmacao.cliente, confirmacao.ativo);
+              }}
+            >
+              {alterando !== null
+                ? 'Salvando...'
+                : confirmacao?.ativo ? 'Sim, ativar cliente' : 'Sim, desativar cliente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
