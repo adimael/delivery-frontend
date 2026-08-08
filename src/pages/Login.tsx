@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, LockKeyhole, Mail, Shield, ShoppingBag, Truck, UserRound } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole, Mail, Shield, ShoppingBag, Truck, UserRound, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -17,18 +16,19 @@ export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const equipe = params.get('equipe') === '1';
-  const [papel, setPapel] = useState<'cliente' | 'entregador'>('cliente');
+  const [papel, setPapel] = useState<'cliente' | 'entregador' | 'equipe'>(
+    params.get('equipe') === '1' ? 'equipe' : 'cliente',
+  );
   const [loading, setLoading] = useState(false);
   const [erroGoogle, setErroGoogle] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [nomeCompleto, setNomeCompleto] = useState('');
   const [modoEmail, setModoEmail] = useState<'login' | 'cadastro'>('login');
   const [mostrarAcessoEmail, setMostrarAcessoEmail] = useState(false);
-  const [mostrarContingencia, setMostrarContingencia] = useState(false);
-  const [mostrarAcessoEquipe, setMostrarAcessoEquipe] = useState(false);
   const nome = configuracao?.nome_plataforma || 'Delivery';
 
   const concluir = () => navigate(
@@ -53,22 +53,11 @@ export default function Login() {
     concluir();
   }, [nome, papel, signInWithGoogle]);
 
-  const autenticarEquipe = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setLoading(true);
-    const result = await signIn(email.trim().toLowerCase(), senha, 'equipe');
-    setLoading(false);
-    if (!result.success) {
-      toast({ title: 'Não foi possível entrar', description: result.error, variant: 'destructive' });
-      return;
-    }
-    concluir();
-  };
-
   const autenticarComEmail = async (event: React.FormEvent) => {
     event.preventDefault();
     const emailNormalizado = email.trim().toLowerCase();
-    if (modoEmail === 'cadastro' && senha !== confirmarSenha) {
+    const modoEfetivo = papel === 'equipe' ? 'login' : modoEmail;
+    if (modoEfetivo === 'cadastro' && senha !== confirmarSenha) {
       toast({
         title: 'As senhas não coincidem',
         description: 'Digite a mesma senha nos dois campos.',
@@ -78,14 +67,14 @@ export default function Login() {
     }
 
     setLoading(true);
-    const result = modoEmail === 'login'
+    const result = modoEfetivo === 'login'
       ? await signIn(emailNormalizado, senha, papel)
       : await signUp(emailNormalizado, senha, nomeCompleto.trim(), papel);
     setLoading(false);
 
     if (!result.success) {
       toast({
-        title: modoEmail === 'login' ? 'Não foi possível entrar' : 'Não foi possível concluir o cadastro',
+        title: modoEfetivo === 'login' ? 'Não foi possível entrar' : 'Não foi possível concluir o cadastro',
         description: result.error,
         variant: 'destructive',
       });
@@ -103,24 +92,11 @@ export default function Login() {
     }
 
     toast({
-      title: modoEmail === 'login' ? 'Acesso realizado' : 'Cadastro concluído',
+      title: modoEfetivo === 'login' ? 'Acesso realizado' : 'Cadastro concluído',
       description: `Bem-vindo(a) ao ${nome}.`,
     });
     concluir();
   };
-
-  const autenticarEquipeGoogle = useCallback(async (credential: string) => {
-    setLoading(true);
-    setErroGoogle('');
-    const result = await signInWithGoogle(credential, 'equipe');
-    setLoading(false);
-    if (!result.success) {
-      toast({ title: 'Acesso não autorizado', description: result.error, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Acesso realizado', description: `Bem-vindo(a) ao ${nome}.` });
-    concluir();
-  }, [nome, signInWithGoogle, toast]);
 
   return (
     <main className="delivery-auth-page">
@@ -147,36 +123,18 @@ export default function Login() {
         <div className="delivery-auth-card">
           <header>
             <span className="delivery-auth-kicker">Área segura</span>
-            <h2>{equipe ? 'Acesso da equipe' : 'Como deseja entrar?'}</h2>
-            <p>{equipe ? 'Acesso exclusivo para gerente e funcionários do Deliciê.' : 'O Google é mais rápido, mas você também pode usar e-mail e senha.'}</p>
+            <h2>Como deseja entrar?</h2>
+            <p>Escolha seu perfil e use o Google ou seu e-mail e senha.</p>
           </header>
 
-          {equipe ? (
-            <div className="delivery-auth-form">
-              <div className="delivery-team-google-info">
-                <Shield />
-                <span><strong>Conta autorizada pela gerência</strong><small>Use o Google vinculado ao e-mail cadastrado no dashboard.</small></span>
-              </div>
-              <GoogleSignInButton disabled={loading} onCredential={autenticarEquipeGoogle} onUnavailable={setErroGoogle} />
-              {loading && <p role="status"><Loader2 className="animate-spin" /> Validando autorização...</p>}
-              {erroGoogle && <p role="alert">{erroGoogle}</p>}
-              <button type="button" className="delivery-auth-guest" onClick={() => setMostrarContingencia((value) => !value)}>
-                {mostrarContingencia ? 'Ocultar acesso de contingência' : 'Acessar com e-mail e senha'}
-              </button>
-              {mostrarContingencia && <form className="delivery-auth-form delivery-auth-contingency" onSubmit={autenticarEquipe}>
-              <div><Label htmlFor="team-email">E-mail</Label><div className="delivery-auth-input"><Mail /><Input id="team-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div></div>
-              <div><div className="delivery-auth-label-row"><Label htmlFor="team-password">Senha</Label><Link to="/forgot-password">Recuperar acesso</Link></div><div className="delivery-auth-input"><LockKeyhole /><Input id="team-password" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required /></div></div>
-              <Button className="delivery-auth-submit btn-primary" disabled={loading}>{loading ? <><Loader2 className="animate-spin" /> Entrando...</> : 'Entrar'}</Button>
-              </form>}
-              <Link className="delivery-auth-guest" to="/login">Voltar ao acesso de clientes</Link>
-            </div>
-          ) : (
             <div className="delivery-auth-form">
               <fieldset className="delivery-account-type" disabled={loading}>
                 <legend>Selecione seu perfil</legend>
                 <button type="button" className={papel === 'cliente' ? 'is-active' : ''} onClick={() => setPapel('cliente')}><UserRound /><span><strong>Cliente</strong><small>Fazer e acompanhar pedidos</small></span></button>
                 <button type="button" className={papel === 'entregador' ? 'is-active' : ''} onClick={() => setPapel('entregador')}><Truck /><span><strong>Entregador</strong><small>Acesso sujeito à aprovação da gerência</small></span></button>
+                <button type="button" className={papel === 'equipe' ? 'is-active' : ''} onClick={() => { setPapel('equipe'); setModoEmail('login'); }}><UsersRound /><span><strong>Equipe Deliciê</strong><small>Gerência e funcionários autorizados</small></span></button>
               </fieldset>
+              {papel === 'equipe' && <div className="delivery-team-google-info"><Shield /><span><strong>Acesso exclusivo da equipe</strong><small>Somente contas autorizadas no dashboard poderão entrar.</small></span></div>}
               <GoogleSignInButton disabled={loading} onCredential={autenticarGoogle} onUnavailable={setErroGoogle} />
               {loading && <p role="status"><Loader2 className="animate-spin" /> Validando sua conta...</p>}
               {erroGoogle && <p role="alert">{erroGoogle}</p>}
@@ -190,69 +148,52 @@ export default function Login() {
               >
                 <Mail />
                 <span>
-                  <strong>{mostrarAcessoEmail ? 'Ocultar acesso por e-mail' : 'Entrar ou cadastrar com e-mail'}</strong>
-                  <small>Para clientes que já possuem senha ou não usam Google</small>
+                  <strong>{mostrarAcessoEmail ? 'Ocultar acesso por e-mail' : papel === 'equipe' ? 'Entrar com e-mail da equipe' : 'Entrar ou cadastrar com e-mail'}</strong>
+                  <small>{papel === 'equipe' ? 'Alternativa para a equipe autorizada' : 'Para quem já possui senha ou não usa Google'}</small>
                 </span>
               </button>
 
               {mostrarAcessoEmail && (
                 <form className="delivery-auth-form delivery-auth-password-flow" onSubmit={autenticarComEmail}>
-                  <div className="delivery-auth-mode" role="group" aria-label="Escolha entrar ou cadastrar">
+                  {papel !== 'equipe' && <div className="delivery-auth-mode" role="group" aria-label="Escolha entrar ou cadastrar">
                     <button type="button" className={modoEmail === 'login' ? 'is-active' : ''} onClick={() => setModoEmail('login')}>Já tenho cadastro</button>
                     <button type="button" className={modoEmail === 'cadastro' ? 'is-active' : ''} onClick={() => setModoEmail('cadastro')}>Criar cadastro</button>
-                  </div>
+                  </div>}
 
-                  {modoEmail === 'cadastro' && <div>
+                  {papel !== 'equipe' && modoEmail === 'cadastro' && <div>
                     <Label htmlFor="customer-name">Nome completo</Label>
-                    <div className="delivery-auth-input"><UserRound /><Input id="customer-name" autoComplete="name" value={nomeCompleto} onChange={event => setNomeCompleto(event.target.value)} required minLength={2} maxLength={120} /></div>
+                    <div className="delivery-auth-input"><UserRound /><Input id="customer-name" placeholder="Digite seu nome completo" autoComplete="name" value={nomeCompleto} onChange={event => setNomeCompleto(event.target.value)} required minLength={2} maxLength={120} /></div>
                   </div>}
 
                   <div>
                     <Label htmlFor="customer-email">E-mail</Label>
-                    <div className="delivery-auth-input"><Mail /><Input id="customer-email" type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required /></div>
+                    <div className="delivery-auth-input"><Mail /><Input id="customer-email" type="email" placeholder="seuemail@exemplo.com" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required /></div>
                   </div>
 
                   <div>
                     <div className="delivery-auth-label-row">
                       <Label htmlFor="customer-password">Senha</Label>
-                      {modoEmail === 'login' && <Link to="/forgot-password">Recuperar acesso</Link>}
+                      {(papel === 'equipe' || modoEmail === 'login') && <Link to="/forgot-password">Recuperar acesso</Link>}
                     </div>
-                    <div className="delivery-auth-input"><LockKeyhole /><Input id="customer-password" type="password" autoComplete={modoEmail === 'login' ? 'current-password' : 'new-password'} value={senha} onChange={event => setSenha(event.target.value)} required minLength={8} maxLength={128} /></div>
+                    <div className="delivery-auth-input"><LockKeyhole /><Input id="customer-password" type={mostrarSenha ? 'text' : 'password'} placeholder="Digite sua senha" autoComplete={papel === 'equipe' || modoEmail === 'login' ? 'current-password' : 'new-password'} value={senha} onChange={event => setSenha(event.target.value)} required minLength={8} maxLength={128} /><button type="button" onClick={() => setMostrarSenha(value => !value)} aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={mostrarSenha}>{mostrarSenha ? <EyeOff /> : <Eye />}</button></div>
                   </div>
 
-                  {modoEmail === 'cadastro' && <>
+                  {papel !== 'equipe' && modoEmail === 'cadastro' && <>
                     <div>
                       <Label htmlFor="customer-password-confirmation">Confirmar senha</Label>
-                      <div className="delivery-auth-input"><LockKeyhole /><Input id="customer-password-confirmation" type="password" autoComplete="new-password" value={confirmarSenha} onChange={event => setConfirmarSenha(event.target.value)} required minLength={8} maxLength={128} /></div>
+                      <div className="delivery-auth-input"><LockKeyhole /><Input id="customer-password-confirmation" type={mostrarConfirmacao ? 'text' : 'password'} placeholder="Digite a senha novamente" autoComplete="new-password" value={confirmarSenha} onChange={event => setConfirmarSenha(event.target.value)} required minLength={8} maxLength={128} /><button type="button" onClick={() => setMostrarConfirmacao(value => !value)} aria-label={mostrarConfirmacao ? 'Ocultar confirmação da senha' : 'Mostrar confirmação da senha'} aria-pressed={mostrarConfirmacao}>{mostrarConfirmacao ? <EyeOff /> : <Eye />}</button></div>
                     </div>
                     <p className="delivery-auth-password-hint">Use ao menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.</p>
                   </>}
 
                   <Button className="delivery-auth-submit btn-primary" disabled={loading}>
-                    {loading ? <><Loader2 className="animate-spin" /> Aguarde...</> : modoEmail === 'login' ? 'Entrar com e-mail' : 'Criar minha conta'}
+                    {loading ? <><Loader2 className="animate-spin" /> Aguarde...</> : papel === 'equipe' || modoEmail === 'login' ? 'Entrar com e-mail' : 'Criar minha conta'}
                   </Button>
                 </form>
               )}
 
-              <button type="button" className="delivery-auth-guest" onClick={() => navigate('/')}>Continuar sem conta</button>
-              <div className="delivery-team-reveal">
-                <div className="delivery-team-reveal-check">
-                  <Checkbox
-                    id="mostrar-acesso-equipe"
-                    checked={mostrarAcessoEquipe}
-                    onCheckedChange={(checked) => setMostrarAcessoEquipe(checked === true)}
-                  />
-                  <Label htmlFor="mostrar-acesso-equipe">Sou da equipe Deliciê</Label>
-                </div>
-                {mostrarAcessoEquipe && (
-                  <Link className="delivery-team-access" to="/login?equipe=1">
-                    <LockKeyhole />
-                    <span><strong>Acesso da equipe Deliciê</strong><small>Exclusivo para gerente e funcionários</small></span>
-                  </Link>
-                )}
-              </div>
+              {papel === 'cliente' && <button type="button" className="delivery-auth-guest" onClick={() => navigate('/')}>Continuar sem conta</button>}
             </div>
-          )}
           <p className="delivery-auth-terms">Ao continuar, você declara estar de acordo com os termos e a política de privacidade.</p>
         </div>
       </section>
