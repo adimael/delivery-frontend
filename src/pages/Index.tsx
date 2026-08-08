@@ -359,8 +359,7 @@ export default function Index() {
             </a>
             <span>Desenvolvido por <strong>Adimael S.</strong></span>
             <nav aria-label="Contatos do desenvolvedor">
-              <a href="https://api.whatsapp.com/send?phone=5573999738916&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener noreferrer">+55 73 99973-8916</a>
-              <a href="https://adimael.github.io" target="_blank" rel="noopener noreferrer">adimael.github.io</a>
+              <a href="mailto:contato@vupi.us">contato@vupi.us</a>
             </nav>
           </div>
         </footer>
